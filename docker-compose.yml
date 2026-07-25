@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  dms-backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: dealerdailyreporting-backend-1
+    restart: unless-stopped
+    volumes:
+      - dealerdaily_data:/app/data
+    environment:
+      - PORT=5000
+      - JWT_SECRET=shiva_honda_super_secret_jwt_key_2026
+      - JWT_REFRESH_SECRET=shiva_honda_super_secret_refresh_jwt_key_2026
+      - TELEGRAM_BOT_TOKEN=8700748612:AAEUbjwE_W-hsSbtNid2vrGSTUY79IJkDqw
+
+  dms-caddy:
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
+    container_name: dealerdailyreporting-caddy-1
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - dms-backend
+
+volumes:
+  dealerdaily_data:
+  caddy_data:
+  caddy_config:

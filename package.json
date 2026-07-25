@@ -1,0 +1,11 @@
+{
+  "name": "shiva-honda-reporting-system",
+  "version": "1.0.0",
+  "description": "My Shiva Honda - Dealer Daily Reporting System Workspace",
+  "scripts": {
+    "backend": "cd backend && npm run dev",
+    "admin": "cd admin-dashboard && npm run dev",
+    "mobile": "cd mobile-app && npm run start"
+  },
+  "private": true
+}

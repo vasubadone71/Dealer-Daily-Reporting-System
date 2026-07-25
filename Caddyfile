@@ -1,0 +1,13 @@
+dms.badonemotors.cloud {
+    # Proxy all API requests to the Node.js backend container
+    handle /api/* {
+        reverse_proxy dms-backend:5000
+    }
+
+    # Serve the React Admin Dashboard built files
+    root * /srv
+    file_server
+
+    # Fallback routing for React Single Page Application
+    try_files {path} /index.html
+}

@@ -1,0 +1,19 @@
+# Stage 1: Build the React Admin Dashboard
+FROM node:18-alpine as builder
+
+WORKDIR /app
+
+COPY admin-dashboard/package*.json ./
+RUN npm install
+
+COPY admin-dashboard/ ./
+RUN npm run build
+
+# Stage 2: Serve with Caddy
+FROM caddy:2-alpine
+
+# Copy the built React static files to Caddy's serving directory
+COPY --from=builder /app/dist /srv
+
+# Copy the Caddyfile for routing and SSL
+COPY Caddyfile /etc/caddy/Caddyfile
