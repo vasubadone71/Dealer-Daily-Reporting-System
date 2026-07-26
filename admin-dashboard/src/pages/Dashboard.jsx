@@ -284,7 +284,7 @@ export default function Dashboard() {
                   return (
                     <tr key={dealer.dealer_id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                       <td style={{ position: 'sticky', left: 0, backgroundColor: '#ffffff', zIndex: 8, fontWeight: '700', fontSize: '0.8rem', padding: '8px 14px', borderRight: '1.5px solid var(--border-color)' }}>
-                        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }} title={dealer.dealer_name}>
+                        <div style={{ whiteSpace: 'nowrap' }} title={dealer.dealer_name}>
                           {dealer.dealer_code} - {dealer.dealer_name}
                         </div>
                       </td>

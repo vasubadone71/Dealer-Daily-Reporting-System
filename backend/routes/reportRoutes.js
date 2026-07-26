@@ -17,6 +17,7 @@ router.get('/dashboard', verifyToken, requireAdmin, reportController.getDashboar
 router.get('/statuses', verifyToken, requireAdmin, reportController.getTodayDealerStatuses);
 router.get('/analytics', verifyToken, requireAdmin, reportController.getAnalytics);
 router.get('/calendar', verifyToken, requireAdmin, reportController.getCalendar);
+router.get('/stock-overview', verifyToken, requireAdmin, reportController.getStockOverview);
 router.post('/admin-edit', verifyToken, requireAdmin, reportController.saveDraft);
 router.post('/admin-submit', verifyToken, requireAdmin, reportController.submitReport);
 

@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const dealerController = require('../controllers/dealerController');
 const { verifyToken } = require('../middleware/authMiddleware');
-const { requireAdmin, requireSuperAdmin } = require('../middleware/roleMiddleware');
+const { requireAdmin, requireSuperAdmin, requireAdminOrGodown } = require('../middleware/roleMiddleware');
 
 router.use(verifyToken);
 
-router.get('/', requireAdmin, dealerController.getDealers);
+router.get('/', requireAdminOrGodown, dealerController.getDealers);
 router.get('/:id', requireAdmin, dealerController.getDealerById);
 router.post('/', requireSuperAdmin, dealerController.createDealer);
 router.put('/:id', requireSuperAdmin, dealerController.updateDealer);

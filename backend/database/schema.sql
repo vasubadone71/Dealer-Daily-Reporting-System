@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS retail_items (
 -- 7. Dispatches (Header)
 CREATE TABLE IF NOT EXISTS dispatches (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_id INTEGER,
     dealer_id INTEGER NOT NULL,
     date TEXT NOT NULL,
     created_by INTEGER NOT NULL,
@@ -62,9 +63,10 @@ CREATE TABLE IF NOT EXISTS dispatches (
     is_opening_stock INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(dealer_id, date, is_opening_stock),
+    FOREIGN KEY (source_id) REFERENCES dealers(id) ON DELETE SET NULL,
     FOREIGN KEY (dealer_id) REFERENCES dealers(id) ON DELETE CASCADE
 );
+CREATE UNIQUE INDEX idx_dispatches_unique ON dispatches(dealer_id, date, is_opening_stock, IFNULL(source_id, 0));
 
 -- 8. Dispatch Items
 CREATE TABLE IF NOT EXISTS dispatch_items (

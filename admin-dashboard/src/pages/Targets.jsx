@@ -117,7 +117,7 @@ function DealerCard({ dealer, targetData, onEdit }) {
 }
 
 // ─── Target Edit Drawer ───────────────────────────────────────────────────────
-function TargetDrawer({ dealer, models, filterMonth, onClose, onSaved }) {
+function TargetDrawer({ dealer, models, filterMonth, onClose, onSaved, onModelUpdated }) {
   const [dealerTargets, setDealerTargets] = useState({});
   const [savedTotal, setSavedTotal]       = useState(0);
   const [performance, setPerformance]     = useState(null);
@@ -157,6 +157,22 @@ function TargetDrawer({ dealer, models, filterMonth, onClose, onSaved }) {
   }, [dealer, filterMonth]);
 
   useEffect(() => { load(); }, [load]);
+
+  const toggleFocus = async (model) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.put(`${API_BASE_URL}/master/models/${model.id}/focus`, 
+        { is_focus: !model.is_focus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.success) {
+        toast.success(res.data.message);
+        if (onModelUpdated) onModelUpdated();
+      }
+    } catch (e) {
+      toast.error('Failed to update focus');
+    }
+  };
 
   const handleChange = (modelId, val) => {
     if (val !== '' && !/^\d+$/.test(val)) return;
@@ -301,7 +317,16 @@ function TargetDrawer({ dealer, models, filterMonth, onClose, onSaved }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{ width: '6px', height: '32px', borderRadius: '3px', background: m.type === 'Scooter' ? '#3498db' : '#9b59b6', flexShrink: 0 }} />
                   <div>
-                    <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: '0.9rem' }}>{m.name}</div>
+                    <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {m.name}
+                      <span 
+                        onClick={() => toggleFocus(m)}
+                        style={{ cursor: 'pointer', opacity: m.is_focus ? 1 : 0.2, filter: m.is_focus ? 'drop-shadow(0 0 2px #CC0000)' : 'none', transition: 'all 0.2s' }}
+                        title={m.is_focus ? "Remove Focus" : "Mark as Focus Model"}
+                      >
+                        ⭐
+                      </span>
+                    </div>
                     <div style={{ fontSize: '0.68rem', color: '#aaa', textTransform: 'uppercase', fontWeight: 600 }}>{m.type}</div>
                   </div>
                 </div>
@@ -397,7 +422,7 @@ export default function Targets() {
       setDealers(activeD);
 
       if (treeRes.data.success) {
-        setModels(treeRes.data.data.map(m => ({ id: m.id, name: m.name, type: m.type })));
+        setModels(treeRes.data.data.map(m => ({ id: m.id, name: m.name, type: m.type, is_focus: m.is_focus === 1 })));
       }
 
       // Build targets map: dealerId -> { target_qty, retail }
@@ -587,6 +612,7 @@ export default function Targets() {
           filterMonth={filterMonth}
           onClose={() => setEditDealer(null)}
           onSaved={handleSaved}
+          onModelUpdated={fetchAll}
         />
       )}
     </div>

@@ -9,23 +9,23 @@ class DealerRepository {
         return db.get('SELECT d.*, n.name as network_name FROM dealers d LEFT JOIN networks n ON d.network_id = n.id WHERE d.id = ?', [id]);
     }
 
-    async create({ dealerCode, name, passwordHash, networkId, district, state, dealerType }) {
+    async create({ dealerCode, name, passwordHash, networkId, district, state, dealerType, role, gstNo }) {
         return db.query(
-            'INSERT INTO dealers (dealer_code, name, password_hash, network_id, district, state, dealer_type, status) VALUES (?, ?, ?, ?, ?, ?, ?, "active")',
-            [dealerCode, name, passwordHash, networkId || null, district, state, dealerType]
+            'INSERT INTO dealers (dealer_code, name, password_hash, network_id, district, state, dealer_type, role, status, gst_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?, "active", ?)',
+            [dealerCode, name, passwordHash, networkId || null, district, state, dealerType, role || 'dealer', gstNo || null]
         );
     }
 
-    async update(id, { name, passwordHash, networkId, district, state, dealerType, status }) {
+    async update(id, { name, passwordHash, networkId, district, state, dealerType, status, role, gstNo }) {
         if (passwordHash) {
             return db.query(
-                'UPDATE dealers SET name = ?, password_hash = ?, network_id = ?, district = ?, state = ?, dealer_type = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                [name, passwordHash, networkId, district, state, dealerType, status, id]
+                'UPDATE dealers SET name = ?, password_hash = ?, network_id = ?, district = ?, state = ?, dealer_type = ?, status = ?, role = ?, gst_no = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [name, passwordHash, networkId, district, state, dealerType, status, role || 'dealer', gstNo || null, id]
             );
         } else {
             return db.query(
-                'UPDATE dealers SET name = ?, network_id = ?, district = ?, state = ?, dealer_type = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                [name, networkId, district, state, dealerType, status, id]
+                'UPDATE dealers SET name = ?, network_id = ?, district = ?, state = ?, dealer_type = ?, status = ?, role = ?, gst_no = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [name, networkId, district, state, dealerType, status, role || 'dealer', gstNo || null, id]
             );
         }
     }
@@ -41,7 +41,7 @@ class DealerRepository {
     async listAll(filters = {}) {
         let sql = `
             SELECT d.id, d.dealer_code, d.name, d.network_id, n.name as network_name, 
-                   d.district, d.state, d.dealer_type, d.status, d.last_login_at, d.created_at 
+                   d.district, d.state, d.dealer_type, d.role, d.status, d.last_login_at, d.created_at, d.gst_no 
             FROM dealers d 
             LEFT JOIN networks n ON d.network_id = n.id
         `;

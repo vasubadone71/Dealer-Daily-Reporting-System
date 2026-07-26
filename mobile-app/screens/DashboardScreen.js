@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import apiClient from '../utils/apiClient';
 
-export default function DashboardScreen({ dealer }) {
+export default function DashboardScreen({ dealer, navigation }) {
   const [report, setReport] = useState(null);
   const [stockOverview, setStockOverview] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -34,7 +34,7 @@ export default function DashboardScreen({ dealer }) {
         setNotifications(notifyRes.data.data || []);
       }
       if (dispatchRes.data.success) {
-        setPendingDispatches(dispatchRes.data.data.filter(d => d.status === 'Pending') || []);
+        setPendingDispatches(dispatchRes.data.data.filter(d => d.status === 'Pending' && d.dealer_id === dealer.id) || []);
       }
       if (perfRes.data.success) {
         setPerformance(perfRes.data.data);
@@ -115,31 +115,78 @@ export default function DashboardScreen({ dealer }) {
 
       <View style={styles.content}>
         
-        {/* Performance & Target Card */}
-        {performance && (
-          <View style={[styles.card, { paddingBottom: 16 }]}>
+        {/* Performance Card Redesign */}
+        {performance && dealer.role !== 'godown' && (
+          <View style={styles.perfCard}>
             <View style={styles.perfHeader}>
-              <View>
-                <Text style={styles.perfTitle}>Monthly Performance</Text>
-                <Text style={styles.perfScore}>{performance.overallScore}/100 - {performance.rating}</Text>
+              <View style={styles.perfScoreCircle}>
+                <Text style={styles.perfScoreText}>{performance.overallScore}</Text>
+                <Text style={styles.perfScoreSub}>/100</Text>
               </View>
-              <Text style={styles.perfStars}>
-                {'⭐'.repeat(performance.stars)}{'☆'.repeat(5 - performance.stars)}
-              </Text>
+              <View style={styles.perfTitleContainer}>
+                <Text style={styles.perfTitle}>Performance Score</Text>
+                <Text style={styles.perfRating}>{performance.rating}</Text>
+                <View style={styles.perfStarsContainer}>
+                  <Text>{'⭐'.repeat(performance.stars)}{'☆'.repeat(5 - performance.stars)}</Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.targetContainer}>
-              <View style={styles.targetRow}>
-                <Text style={styles.targetLabel}>Retail Target</Text>
-                <Text style={styles.targetValue}>{performance.totalRetail} / {performance.targetQty}</Text>
+            
+            <View style={styles.perfMetricsRow}>
+              <View style={styles.perfMetricBox}>
+                <Text style={styles.perfMetricVal}>{performance.submissionPercent}%</Text>
+                <Text style={styles.perfMetricLabel}>Compliance</Text>
               </View>
-              <View style={styles.progressBarBg}>
-                <View style={[
-                  styles.progressBarFill, 
-                  { width: `${Math.min(100, performance.targetPercent)}%`, backgroundColor: performance.targetPercent >= 100 ? '#27ae60' : '#CC0000' }
-                ]} />
+              <View style={styles.perfMetricBox}>
+                <Text style={styles.perfMetricVal}>{performance.dispatchPercent}%</Text>
+                <Text style={styles.perfMetricLabel}>Acceptance</Text>
               </View>
-              <Text style={styles.targetPercent}>{performance.targetPercent}% Achieved</Text>
+              <View style={styles.perfMetricBox}>
+                <Text style={styles.perfMetricVal}>{performance.accuracyPercent}%</Text>
+                <Text style={styles.perfMetricLabel}>Accuracy</Text>
+              </View>
             </View>
+          </View>
+        )}
+
+        {/* Top Pending Models Card */}
+        {performance && performance.modelWisePerformance && dealer.role !== 'godown' && (
+          <View style={styles.modelsCard}>
+            <View style={styles.modelsHeader}>
+              <Text style={styles.sectionTitleNoMargin}>Target Progress</Text>
+              <Text style={styles.targetStatusText}>{performance.totalRetail} / {performance.targetQty} achieved</Text>
+            </View>
+            <View style={styles.progressBarBg}>
+              <View style={[
+                styles.progressBarFill, 
+                { width: `${Math.min(100, performance.targetPercent)}%`, backgroundColor: performance.targetPercent >= 100 ? '#27ae60' : '#CC0000' }
+              ]} />
+            </View>
+
+            <Text style={styles.topPendingTitle}>Top Pending Models</Text>
+            {performance.modelWisePerformance
+              .filter(m => m.remaining > 0)
+              .sort((a, b) => {
+                if (a.isFocus && !b.isFocus) return -1;
+                if (!a.isFocus && b.isFocus) return 1;
+                return b.remaining - a.remaining;
+              })
+              .slice(0, 3)
+              .map(m => (
+                <View key={m.modelId} style={styles.pendingModelRow}>
+                  <Text style={[styles.pendingModelName, m.isFocus && { color: '#CC0000' }]}>
+                    {m.isFocus && '⭐ '}{m.modelName}
+                  </Text>
+                  <Text style={styles.pendingModelQty}>Remaining <Text style={{fontWeight: '900', color: '#1a1a2e'}}>{m.remaining}</Text></Text>
+                </View>
+              ))}
+            
+            <TouchableOpacity 
+              style={styles.viewAllBtn} 
+              onPress={() => navigation && navigation.navigate('RetailTargets')}
+            >
+              <Text style={styles.viewAllText}>View All Targets</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -149,31 +196,35 @@ export default function DashboardScreen({ dealer }) {
           <ActivityIndicator color="#CC0000" style={{ marginVertical: 20 }} />
         ) : (
           <View style={styles.card}>
-            <View style={[
-              styles.statusBadge, 
-              { backgroundColor: getStatusColor(report ? report.status : 'Not Started') + '15' }
-            ]}>
-              <Text style={[
-                styles.statusText, 
-                { color: getStatusColor(report ? report.status : 'Not Started') }
-              ]}>
-                {report ? (
-                  report.status === 'Submitted' ? '✅ Submitted & Locked' :
-                  report.status === 'Pending' ? '🟡 Draft Saved (Unsubmitted)' :
-                  report.status === 'Not Sent' ? '❌ Missed & Locked' : '🔴 Late'
-                ) : '📝 Not Started (No Entry)'}
-              </Text>
-            </View>
+            {dealer.role !== 'godown' && (
+              <>
+                <View style={[
+                  styles.statusBadge, 
+                  { backgroundColor: getStatusColor(report ? report.status : 'Not Started') + '15' }
+                ]}>
+                  <Text style={[
+                    styles.statusText, 
+                    { color: getStatusColor(report ? report.status : 'Not Started') }
+                  ]}>
+                    {report ? (
+                      report.status === 'Submitted' ? '✅ Submitted & Locked' :
+                      report.status === 'Pending' ? '🟡 Draft Saved (Unsubmitted)' :
+                      report.status === 'Not Sent' ? '❌ Missed & Locked' : '🔴 Late'
+                    ) : '📝 Not Started (No Entry)'}
+                  </Text>
+                </View>
 
-            <Text style={styles.cardDesc}>
-              {report ? (
-                report.status === 'Submitted' || report.status === 'Locked'
-                  ? `Your report was finalized at ${new Date(report.submitted_at.endsWith('Z') ? report.submitted_at : report.submitted_at.replace(' ', 'T') + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}. Editing is disabled.`
-                  : report.status === 'Not Sent'
-                  ? 'The submission deadline has passed (9:30 PM). This report is closed.'
-                  : 'You have a saved draft. Make sure to review and hit "Final Submit" before 9:30 PM to lock it.'
-              ) : 'Please fill out your daily sales and stock report. Unsubmitted drafts will be automatically locked as NOT SENT at 9:30 PM.'}
-            </Text>
+                <Text style={styles.cardDesc}>
+                  {report ? (
+                    report.status === 'Submitted' || report.status === 'Locked'
+                      ? `Your report was finalized at ${new Date(report.submitted_at.endsWith('Z') ? report.submitted_at : report.submitted_at.replace(' ', 'T') + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}. Editing is disabled.`
+                      : report.status === 'Not Sent'
+                      ? 'The submission deadline has passed (9:30 PM). This report is closed.'
+                      : 'You have a saved draft. Make sure to review and hit "Final Submit" before 9:30 PM to lock it.'
+                  ) : 'Please fill out your daily sales and stock report. Unsubmitted drafts will be automatically locked as NOT SENT at 9:30 PM.'}
+                </Text>
+              </>
+            )}
 
             {stockOverview && (
               <View style={styles.stockOverviewContainer}>
@@ -224,27 +275,44 @@ export default function DashboardScreen({ dealer }) {
               return (
                 <View key={dispatch.id} style={styles.dispatchCard}>
                   <View style={styles.dispatchHeader}>
-                    <Text style={styles.dispatchTitle}>🚚 Dispatch #{dispatch.id}</Text>
-                    <Text style={styles.dispatchDate}>{dispatch.date}</Text>
+                    <View style={styles.dispatchTitleRow}>
+                      <View style={styles.dispatchIconContainer}>
+                        <Text style={styles.dispatchIcon}>🚚</Text>
+                      </View>
+                      <View>
+                        <Text style={styles.dispatchTitle}>Dispatch #{dispatch.id}</Text>
+                        <Text style={styles.dispatchDate}>{dispatch.date}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.dispatchBadge}>
+                      <Text style={styles.dispatchBadgeText}>Action Required</Text>
+                    </View>
                   </View>
-                  <Text style={styles.dispatchDesc}>
-                    You have received a dispatch of{' '}
-                    <Text style={{fontWeight: 'bold', color: '#CC0000'}}>{totalQty} vehicles</Text>.
-                    {'\n'}<Text style={{color: '#555', fontSize: 13}}>{modelSummary}</Text>
-                    {'\n'}Please verify physical delivery before accepting.
-                  </Text>
+                  
+                  <View style={styles.dispatchBody}>
+                    <Text style={styles.dispatchDesc}>
+                      You have received a dispatch of <Text style={styles.dispatchHighlight}>{totalQty} vehicles</Text>.
+                    </Text>
+                    <View style={styles.dispatchModelBox}>
+                      <Text style={styles.dispatchModelText}>{modelSummary}</Text>
+                    </View>
+                    <Text style={styles.dispatchWarning}>
+                      ⚠️ Please verify physical delivery before accepting.
+                    </Text>
+                  </View>
+
                   <View style={styles.dispatchActions}>
                     <TouchableOpacity 
                       style={[styles.btn, styles.btnReject]} 
                       onPress={() => handleDispatchAction(dispatch.id, 'Rejected')}
                     >
-                      <Text style={styles.btnText}>Reject</Text>
+                      <Text style={styles.btnRejectText}>Reject</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={[styles.btn, styles.btnAccept]} 
                       onPress={() => handleDispatchAction(dispatch.id, 'Accepted')}
                     >
-                      <Text style={styles.btnText}>Verify & Accept</Text>
+                      <Text style={styles.btnAcceptText}>Verify & Accept</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -542,62 +610,269 @@ const styles = StyleSheet.create({
   },
   dispatchCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
     marginBottom: 16,
-    borderWidth: 2,
-    borderColor: '#f39c12',
-    shadowColor: '#f39c12',
-    shadowOffset: { width: 0, height: 4 },
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#64748b',
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowRadius: 15,
+    elevation: 4,
   },
   dispatchHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  dispatchTitleRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+  },
+  dispatchIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#fef3c7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  dispatchIcon: {
+    fontSize: 22,
   },
   dispatchTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1a1a2e',
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 2,
   },
   dispatchDate: {
     fontSize: 13,
-    color: '#666',
-    fontWeight: 'bold',
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  dispatchBadge: {
+    backgroundColor: '#fee2e2',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  dispatchBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#ef4444',
+  },
+  dispatchBody: {
+    marginBottom: 20,
   },
   dispatchDesc: {
-    fontSize: 14,
-    color: '#444',
+    fontSize: 15,
+    color: '#334155',
+    marginBottom: 10,
+  },
+  dispatchHighlight: {
+    fontWeight: 'bold',
+    color: '#d97706',
+  },
+  dispatchModelBox: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  dispatchModelText: {
+    color: '#475569',
+    fontSize: 13,
     lineHeight: 20,
-    marginBottom: 16,
+    fontWeight: '500',
+  },
+  dispatchWarning: {
+    fontSize: 13,
+    color: '#64748b',
+    fontStyle: 'italic',
   },
   dispatchActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    paddingTop: 16,
   },
   btn: {
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   btnReject: {
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#e74c3c',
+    borderColor: '#e2e8f0',
+  },
+  btnRejectText: {
+    fontWeight: '700',
+    fontSize: 14,
+    color: '#64748b',
   },
   btnAccept: {
-    backgroundColor: '#27ae60',
+    backgroundColor: '#10b981',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  btnText: {
+  btnAcceptText: {
+    fontWeight: '700',
+    fontSize: 14,
+    color: '#ffffff',
+  },
+  perfCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  perfHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  perfScoreCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#CC0000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  perfScoreText: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  perfScoreSub: {
+    color: '#fff',
+    fontSize: 10,
+    opacity: 0.8,
+    marginTop: -2,
+  },
+  perfTitleContainer: {
+    flex: 1,
+  },
+  perfTitle: {
+    fontSize: 14,
+    color: '#555',
+    textTransform: 'uppercase',
+    fontWeight: 'bold',
+  },
+  perfRating: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#1a1a2e',
+    marginVertical: 2,
+  },
+  perfStarsContainer: {
+    flexDirection: 'row',
+  },
+  perfMetricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingTop: 15,
+  },
+  perfMetricBox: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  perfMetricVal: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#1a1a2e',
+  },
+  perfMetricLabel: {
+    fontSize: 11,
+    color: '#888',
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  modelsCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  modelsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  sectionTitleNoMargin: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#1a1a2e',
+  },
+  targetStatusText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#555',
+  },
+  topPendingTitle: {
+    fontSize: 12,
+    color: '#888',
+    textTransform: 'uppercase',
+    fontWeight: 'bold',
+    marginTop: 15,
+    marginBottom: 10,
+  },
+  pendingModelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f4f4f4',
+  },
+  pendingModelName: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  pendingModelQty: {
+    fontSize: 14,
+    color: '#666',
+  },
+  viewAllBtn: {
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  viewAllText: {
+    color: '#CC0000',
     fontWeight: 'bold',
     fontSize: 14,
-    color: '#fff',
   },
 });

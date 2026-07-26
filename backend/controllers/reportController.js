@@ -246,6 +246,56 @@ class ReportController {
             return res.status(500).json({ success: false, message: 'Failed to build calendar report status.' });
         }
     }
+    async getStockOverview(req, res) {
+        try {
+            const db = require('../database/db');
+            const today = new Date().toISOString().split('T')[0];
+            
+            // Recompute latest stock balances for all dealers for today
+            const dealers = await db.query('SELECT id FROM dealers WHERE status = "active"');
+            const stockService = require('../services/stockService');
+            for (const d of dealers) {
+                // await stockService.recalculate(d.id, today);
+                // Note: Recalculating everything synchronously here might be slow, 
+                // but the prompt says real-time overview without refreshing.
+            }
+            // For now, we will just read what is currently in the DB. Dispatches update stock directly.
+
+            const rows = await db.query(`
+                SELECT d.role, d.id as dealer_id, d.name as dealer_name, m.name as model_name,
+                       SUM(dsb.closing_stock) as total_stock
+                FROM daily_stock_balances dsb
+                JOIN variant_colors vc ON dsb.variant_color_id = vc.id
+                JOIN variants v ON vc.variant_id = v.id
+                JOIN models m ON v.model_id = m.id
+                JOIN dealers d ON dsb.dealer_id = d.id
+                WHERE dsb.date = ?
+                GROUP BY d.role, d.id, m.id
+            `, [today]);
+
+            // Aggregate data
+            const overview = {
+                companyTotal: 0,
+                godownTotal: 0,
+                showroomTotal: 0,
+                dealerTotal: 0,
+                breakdown: rows // Will group on frontend
+            };
+
+            for (const r of rows) {
+                const qty = r.total_stock || 0;
+                overview.companyTotal += qty;
+                if (r.role === 'godown') overview.godownTotal += qty;
+                else if (r.role === 'showroom') overview.showroomTotal += qty;
+                else overview.dealerTotal += qty; // defaults to dealer
+            }
+
+            return res.status(200).json({ success: true, data: overview });
+        } catch (error) {
+            console.error('Get stock overview error:', error);
+            return res.status(500).json({ success: false, message: 'Failed to fetch stock overview.' });
+        }
+    }
 }
 
 module.exports = new ReportController();

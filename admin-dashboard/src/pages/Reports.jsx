@@ -85,7 +85,8 @@ export default function Reports() {
       ]);
 
       if (dealersRes.data.success) {
-        const dealerList = dealersRes.data.data.filter(d => d.role === 'dealer' || d.dealer_type);
+        // Include godowns, showrooms, and dealers for reporting
+        const dealerList = dealersRes.data.data.filter(d => d.role !== 'network_manager' && d.role !== 'admin');
         setDealers(dealerList);
         if (dealerList.length > 0) setSelectedDealer(dealerList[0].id.toString());
       }

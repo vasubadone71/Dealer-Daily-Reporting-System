@@ -52,7 +52,7 @@ class StockService {
                     for (let item of retailItems) retailMap[item.variant_color_id] = item.quantity;
                 }
 
-                // Dispatches (Accepted, Completed, or Initialized)
+                // Incoming Dispatches (Accepted, Completed, or Initialized)
                 const dispatchesData = await db.query(
                     'SELECT id, is_opening_stock FROM dispatches WHERE dealer_id = ? AND date = ? AND status IN ("Accepted", "Completed", "Initialized")',
                     [dealerId, date]
@@ -67,6 +67,21 @@ class StockService {
                         } else {
                             dispatchMap[item.variant_color_id] = (dispatchMap[item.variant_color_id] || 0) + item.quantity;
                         }
+                    }
+                }
+
+                // Outgoing Dispatches (Godown -> Showroom/Dealer)
+                // Deduct instantly if Pending, Accepted, or Completed
+                const outgoingDispatchesData = await db.query(
+                    'SELECT id FROM dispatches WHERE source_id = ? AND date = ? AND status IN ("Pending", "Accepted", "Completed")',
+                    [dealerId, date]
+                );
+
+                const outgoingDispatchMap = {};
+                for (const d of outgoingDispatchesData) {
+                    const dispatchItems = await db.query('SELECT variant_color_id, quantity FROM dispatch_items WHERE dispatch_id = ?', [d.id]);
+                    for (let item of dispatchItems) {
+                        outgoingDispatchMap[item.variant_color_id] = (outgoingDispatchMap[item.variant_color_id] || 0) + item.quantity;
                     }
                 }
 
@@ -86,23 +101,25 @@ class StockService {
                     ...Object.keys(openingStocks).map(Number),
                     ...Object.keys(retailMap).map(Number),
                     ...Object.keys(dispatchMap).map(Number),
+                    ...Object.keys(outgoingDispatchMap).map(Number),
                     ...Object.keys(adjMap).map(Number)
                 ]);
 
                 for (const vcId of vcIdsToProcess) {
                     const opening = openingStocks[vcId] || 0;
-                    const dispatched = dispatchMap[vcId] || 0;
+                    const dispatchedIn = dispatchMap[vcId] || 0;
+                    const dispatchedOut = outgoingDispatchMap[vcId] || 0;
                     const retail = retailMap[vcId] || 0;
                     const adjustment = adjMap[vcId] || 0;
                     
-                    const closing = opening + dispatched + adjustment - retail;
+                    const closing = opening + dispatchedIn + adjustment - retail - dispatchedOut;
 
                     // Only store row if there is some stock or movement, to save space. 
                     // Wait, if it goes to zero, we DO need to store the 0 so tomorrow starts at 0 properly if yesterday was >0.
                     // Actually storing all rows for a dealer might explode. Let's only save if opening > 0 OR there's a transaction.
                     // If it drops to 0, it stores the 0. Tomorrow opening will be 0. We'll skip if everything is 0.
                     
-                    if (opening === 0 && dispatched === 0 && retail === 0 && adjustment === 0 && closing === 0) {
+                    if (opening === 0 && dispatchedIn === 0 && dispatchedOut === 0 && retail === 0 && adjustment === 0 && closing === 0) {
                         continue;
                     }
 
@@ -114,12 +131,12 @@ class StockService {
                     if (existing) {
                         await db.query(
                             'UPDATE daily_stock_balances SET opening_stock=?, dispatched=?, retail_sales=?, adjustment=?, closing_stock=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
-                            [opening, dispatched, retail, adjustment, closing, existing.id]
+                            [opening, dispatchedIn - dispatchedOut, retail, adjustment, closing, existing.id]
                         );
                     } else {
                         await db.query(
                             'INSERT INTO daily_stock_balances (dealer_id, date, variant_color_id, opening_stock, dispatched, retail_sales, adjustment, closing_stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                            [dealerId, date, vcId, opening, dispatched, retail, adjustment, closing]
+                            [dealerId, date, vcId, opening, dispatchedIn - dispatchedOut, retail, adjustment, closing]
                         );
                     }
                 }

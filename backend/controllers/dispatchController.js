@@ -20,7 +20,7 @@ class DispatchController {
     }
 
     async saveDispatch(req, res) {
-        const adminId = req.user.id;
+        const userId = req.user.id;
         const { dealerId, date, items, isOpeningStock, isReset } = req.body;
 
         if (!dealerId || !date || !items || !Array.isArray(items)) {
@@ -37,7 +37,7 @@ class DispatchController {
                         // Archive old
                         await db.query('UPDATE dispatches SET status = "Archived" WHERE id = ?', [existing.id]);
                         await logRepository.logActivity({
-                            actorType: 'admin', actorId: adminId, username: req.user.username,
+                            actorType: req.user.type, actorId: userId, username: req.user.username || req.user.dealer_code,
                             action: 'Reset Opening Stock', details: `Archived old opening stock for dealer ${dealerId}`,
                             ipAddress: req.ip || req.headers['x-forwarded-for']
                         });
@@ -47,12 +47,30 @@ class DispatchController {
                 }
             }
 
-            const result = await dispatchRepository.saveDispatch(dealerId, date, items, adminId, isOpeningStock);
+            let sourceId = null;
+            let initialStatus = null; // Let repository decide by default
+
+            if (req.user.role === 'godown') {
+                sourceId = req.user.id;
+            }
+
+            const db = require('../database/db');
+            const destDealer = await db.get('SELECT role FROM dealers WHERE id = ?', [dealerId]);
+            
+            if (req.user.role === 'godown') {
+                if (destDealer && destDealer.role === 'showroom') {
+                    initialStatus = 'Completed'; // Instantly transferred Godown -> Showroom
+                } else {
+                    initialStatus = 'Pending'; // Godown -> Dealer requires acceptance
+                }
+            }
+
+            const result = await dispatchRepository.saveDispatch(dealerId, date, items, userId, isOpeningStock, sourceId, initialStatus);
             
             await logRepository.logActivity({
-                actorType: 'admin',
-                actorId: adminId,
-                username: req.user.username,
+                actorType: req.user.type,
+                actorId: userId,
+                username: req.user.username || req.user.dealer_code,
                 action: 'Saved Dispatch',
                 details: `Saved dispatch for dealer ${dealerId} on date: ${date} with ${items.length} items`,
                 ipAddress: req.ip || req.headers['x-forwarded-for']
@@ -61,7 +79,7 @@ class DispatchController {
             return res.status(200).json({ success: true, message: 'Dispatch saved successfully.', data: result });
         } catch (error) {
             console.error('Save dispatch error:', error);
-            return res.status(500).json({ success: false, message: 'Failed to save dispatch.' });
+            return res.status(500).json({ success: false, message: 'Failed to save dispatch: ' + error.message, stack: error.stack });
         }
     }
 

@@ -61,16 +61,21 @@ class DispatchRepository {
         return dispatches;
     }
 
-    async saveDispatch(dealerId, date, items, adminId, isOpeningStock = false) {
+    async saveDispatch(dealerId, date, items, adminId, isOpeningStock = false, sourceId = null, initialStatus = null) {
         // Upsert dispatch record for that date
-        let dispatch = await db.get('SELECT id FROM dispatches WHERE dealer_id = ? AND date = ? AND is_opening_stock = ?', [dealerId, date, isOpeningStock ? 1 : 0]);
+        let dispatch;
+        if (sourceId) {
+            dispatch = await db.get('SELECT id FROM dispatches WHERE dealer_id = ? AND date = ? AND is_opening_stock = ? AND source_id = ?', [dealerId, date, isOpeningStock ? 1 : 0, sourceId]);
+        } else {
+            dispatch = await db.get('SELECT id FROM dispatches WHERE dealer_id = ? AND date = ? AND is_opening_stock = ? AND source_id IS NULL', [dealerId, date, isOpeningStock ? 1 : 0]);
+        }
         
-        const status = isOpeningStock ? 'Initialized' : 'Completed';
+        const status = initialStatus || (isOpeningStock ? 'Initialized' : 'Completed');
 
         if (!dispatch) {
             const res = await db.query(
-                'INSERT INTO dispatches (dealer_id, date, created_by, status, is_opening_stock) VALUES (?, ?, ?, ?, ?)',
-                [dealerId, date, adminId, status, isOpeningStock ? 1 : 0]
+                'INSERT INTO dispatches (dealer_id, date, created_by, status, is_opening_stock, source_id) VALUES (?, ?, ?, ?, ?, ?)',
+                [dealerId, date, adminId, status, isOpeningStock ? 1 : 0, sourceId]
             );
             dispatch = { id: res.lastID };
         } else {
@@ -94,27 +99,37 @@ class DispatchRepository {
         
         // Recalculate stock immediately so it reflects in Live Network Stock
         await stockService.recalculate(dealerId, date);
+        if (sourceId) {
+            await stockService.recalculate(sourceId, date);
+        }
 
         return { id: dispatch.id };
     }
 
+
     async updateDispatchStatus(id, status) {
         await db.query('UPDATE dispatches SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, id]);
         
-        const dispatch = await db.get('SELECT dealer_id, date FROM dispatches WHERE id = ?', [id]);
+        const dispatch = await db.get('SELECT dealer_id, date, source_id FROM dispatches WHERE id = ?', [id]);
         if (dispatch) {
             await stockService.recalculate(dispatch.dealer_id, dispatch.date);
+            if (dispatch.source_id) {
+                await stockService.recalculate(dispatch.source_id, dispatch.date);
+            }
         }
         return true;
     }
 
     async deleteDispatch(id) {
-        const dispatch = await db.get('SELECT dealer_id, date FROM dispatches WHERE id = ?', [id]);
+        const dispatch = await db.get('SELECT dealer_id, date, source_id FROM dispatches WHERE id = ?', [id]);
         if (!dispatch) return false;
 
         await db.query('DELETE FROM dispatches WHERE id = ?', [id]);
         
         await stockService.recalculate(dispatch.dealer_id, dispatch.date);
+        if (dispatch.source_id) {
+            await stockService.recalculate(dispatch.source_id, dispatch.date);
+        }
         return true;
     }
     

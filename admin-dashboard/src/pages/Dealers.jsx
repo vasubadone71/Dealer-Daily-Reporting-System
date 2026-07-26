@@ -25,8 +25,10 @@ export default function Dealers() {
   const [district, setDistrict] = useState('');
   const [state, setState] = useState('Madhya Pradesh'); // default
   const [dealerType, setDealerType] = useState('AD');
+  const [role, setRole] = useState('dealer');
   const [status, setStatus] = useState('active');
   const [resetPasswordVal, setResetPasswordVal] = useState('');
+  const [gstNo, setGstNo] = useState('');
 
   useEffect(() => {
     // Load logged in user
@@ -71,7 +73,9 @@ export default function Dealers() {
     setDistrict('');
     setState('Madhya Pradesh');
     setDealerType('AD');
+    setRole('dealer');
     setStatus('active');
+    setGstNo('');
   };
 
   const handleOpenAddModal = () => {
@@ -95,7 +99,9 @@ export default function Dealers() {
     setDistrict(dealer.district);
     setState(dealer.state);
     setDealerType(dealer.dealer_type);
+    setRole(dealer.role || 'dealer');
     setStatus(dealer.status);
+    setGstNo(dealer.gst_no || '');
     setIsModalOpen(true);
   };
 
@@ -122,7 +128,9 @@ export default function Dealers() {
       district: district.trim(),
       state: state.trim(),
       dealerType,
-      status
+      role,
+      status,
+      gstNo: gstNo.trim()
     };
 
     if (!selectedDealer && !password) {
@@ -279,6 +287,7 @@ export default function Dealers() {
                   <th>Dealer Name</th>
 
                   <th>District / State</th>
+                  <th>Role</th>
                   <th>Type</th>
                   <th>Status</th>
                   <th>Last Logged In</th>
@@ -299,6 +308,11 @@ export default function Dealers() {
                       <td>{d.name}</td>
 
                       <td>{d.district}, {d.state}</td>
+                      <td>
+                        <span className={`status-badge ${d.role === 'godown' ? 'late' : d.role === 'showroom' ? 'submitted' : ''}`} style={{ backgroundColor: d.role === 'godown' ? '#e8f4fd' : d.role === 'showroom' ? '#f4e8fd' : '#f0f0f0', color: d.role === 'godown' ? '#2980b9' : d.role === 'showroom' ? '#8e44ad' : '#666' }}>
+                          {d.role.toUpperCase()}
+                        </span>
+                      </td>
                       <td style={{ fontWeight: '600' }}>{d.dealer_type}</td>
                       <td>
                         <span className={`status-badge ${d.status === 'active' ? 'submitted' : 'late'}`}>
@@ -386,27 +400,43 @@ export default function Dealers() {
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+                {role === 'dealer' && (
+                  <div className="input-group">
+                    <label>Dealer Type *</label>
+                    <select
+                      className="input-field"
+                      value={dealerType}
+                      onChange={(e) => setDealerType(e.target.value)}
+                      required
+                      style={{ height: '48px' }}
+                    >
+                      <option value="AD">AD (Authorised Dealer)</option>
+                      <option value="FO">FO (Fleet Operator)</option>
+                      <option value="EC">EC (Extension Counter)</option>
+                      <option value="ASC">ASC (Authorised Service Center)</option>
+                      <option value="Sub Dealer">Sub Dealer</option>
+                    </select>
+                  </div>
+                )}
                 <div className="input-group">
-                  <label>Dealer Type *</label>
+                  <label>User Role *</label>
                   <select
                     className="input-field"
-                    value={dealerType}
-                    onChange={(e) => setDealerType(e.target.value)}
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
                     required
                     style={{ height: '48px' }}
                   >
-                    <option value="AD">AD (Authorised Dealer)</option>
-                    <option value="FO">FO (Fleet Operator)</option>
-                    <option value="EC">EC (Extension Counter)</option>
-                    <option value="ASC">ASC (Authorised Service Center)</option>
-                    <option value="Sub Dealer">Sub Dealer</option>
+                    <option value="dealer">Dealer</option>
+                    <option value="godown">Godown</option>
+                    <option value="showroom">Showroom</option>
                   </select>
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div className="input-group">
-                  <label>District *</label>
+                  <label>Location *</label>
                   <input
                     type="text"
                     className="input-field"
@@ -428,6 +458,19 @@ export default function Dealers() {
                   />
                 </div>
               </div>
+
+              {role === 'dealer' && (
+                <div className="input-group">
+                  <label>GST No (Optional)</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="Enter GST Number"
+                    value={gstNo}
+                    onChange={(e) => setGstNo(e.target.value.toUpperCase())}
+                  />
+                </div>
+              )}
 
               {selectedDealer && (
                 <div className="input-group">

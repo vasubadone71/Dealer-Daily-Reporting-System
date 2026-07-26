@@ -19,6 +19,7 @@ import DealerStock from './pages/DealerStock';
 import ErrorBoundary from './components/ErrorBoundary';
 
 import MasterColors from './pages/MasterColors';
+import StockOverview from './pages/StockOverview';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -125,6 +126,7 @@ export default function App() {
   // Sidebar Menu Items based on role privileges
   const menuItems = [
     { name: 'Dashboard', icon: '📊' },
+    { name: 'Stock Overview', icon: '🏢' },
     { name: 'Dealers', icon: '👥' },
     { name: 'Dealer Stock', icon: '📦' },
     { name: 'Reports & Analytics', icon: '📈' },
@@ -145,6 +147,7 @@ export default function App() {
   const renderContent = () => {
     switch (activeMenu) {
       case 'Dashboard': return <Dashboard />;
+      case 'Stock Overview': return <StockOverview />;
       case 'Dealers': return <Dealers />;
       case 'Dealer Stock': return <DealerStock />;
       case 'Reports & Analytics': return <Reports />;
@@ -166,8 +169,8 @@ export default function App() {
       {/* Sidebar Navigation */}
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <div className="logo-icon">H</div>
-          <h2>Shiva Honda</h2>
+          <img src="/honda-logo.png" alt="Honda Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+          <h2>My Shiva Honda</h2>
         </div>
         
         <div className="sidebar-nav">

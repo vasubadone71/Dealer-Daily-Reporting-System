@@ -32,7 +32,7 @@ class DealerController {
             return res.status(403).json({ success: false, message: 'Forbidden. Super Admin privilege required to create dealers.' });
         }
 
-        const { dealerCode, name, password, networkId, district, state, dealerType } = req.body;
+        const { dealerCode, name, password, networkId, district, state, dealerType, role, gstNo } = req.body;
         if (!dealerCode || !name || !password || !district || !state || !dealerType) {
             return res.status(400).json({ success: false, message: 'All fields are required.' });
         }
@@ -55,7 +55,7 @@ class DealerController {
 
             const passwordHash = bcrypt.hashSync(password, 10);
             await dealerRepository.create({
-                dealerCode, name, passwordHash, networkId: resolvedNetworkId, district, state, dealerType
+                dealerCode, name, passwordHash, networkId: resolvedNetworkId, district, state, dealerType, role: role || 'dealer', gstNo
             });
 
             await logRepository.logActivity({
@@ -80,7 +80,7 @@ class DealerController {
         }
 
         const { id } = req.params;
-        const { name, password, networkId, district, state, dealerType, status } = req.body;
+        const { name, password, networkId, district, state, dealerType, status, role, gstNo } = req.body;
 
         try {
             const dealer = await dealerRepository.findById(id);
@@ -94,7 +94,7 @@ class DealerController {
             }
 
             await dealerRepository.update(id, {
-                name, passwordHash, networkId, district, state, dealerType, status
+                name, passwordHash, networkId, district, state, dealerType, status, role, gstNo
             });
 
             await logRepository.logActivity({

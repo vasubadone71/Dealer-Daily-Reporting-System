@@ -66,8 +66,42 @@ const requireDealer = async (req, res, next) => {
     });
 };
 
+const requireSuperAdminOrGodown = async (req, res, next) => {
+    // Allows super_admin (admin table) OR godown (dealers table with role = 'godown')
+    if (req.user) {
+        if (req.user.type === 'admin' && req.user.role === 'super_admin') {
+            return next();
+        }
+        if (req.user.type === 'dealer' && req.user.role === 'godown') {
+            return next();
+        }
+    }
+    
+    return res.status(403).json({ 
+        success: false, 
+        message: 'Forbidden. Super Admin or Godown privileges required.' 
+    });
+};
+
+const requireAdminOrGodown = async (req, res, next) => {
+    if (req.user) {
+        if (req.user.type === 'admin') {
+            return next();
+        }
+        if (req.user.type === 'dealer' && req.user.role === 'godown') {
+            return next();
+        }
+    }
+    return res.status(403).json({ 
+        success: false, 
+        message: 'Forbidden. Admin or Godown privileges required.' 
+    });
+};
+
 module.exports = {
     requireAdmin,
     requireSuperAdmin,
-    requireDealer
+    requireDealer,
+    requireSuperAdminOrGodown,
+    requireAdminOrGodown
 };

@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "sdkVersion": "54.0.0",
     "orientation": "portrait",
-    "icon": "./New Icon.png",
+    "icon": "./icon final.png",
     "userInterfaceStyle": "light",
     "updates": {
       "enabled": false
@@ -22,7 +22,7 @@
       "package": "com.shivahonda.reporting",
       "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./New Icon.png",
+        "foregroundImage": "./icon final.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [

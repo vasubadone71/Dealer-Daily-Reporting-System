@@ -8,10 +8,12 @@ class TargetController {
             let sql = `
                 SELECT t.*, 
                 CASE WHEN t.target_type = 'dealer' THEN d.name ELSE n.name END as target_name,
-                CASE WHEN t.target_type = 'dealer' THEN d.dealer_code ELSE '' END as dealer_code
+                CASE WHEN t.target_type = 'dealer' THEN d.dealer_code ELSE '' END as dealer_code,
+                m.name as model_name, m.is_focus
                 FROM targets t
                 LEFT JOIN dealers d ON t.target_type = 'dealer' AND t.target_id = d.id
                 LEFT JOIN networks n ON t.target_type = 'network' AND t.target_id = n.id
+                LEFT JOIN models m ON t.model_id = m.id
                 WHERE 1=1
             `;
             const params = [];

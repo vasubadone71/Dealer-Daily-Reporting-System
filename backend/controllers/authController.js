@@ -299,7 +299,7 @@ class AuthController {
             // Generate JWT for Dealer
             const secret = process.env.JWT_SECRET || 'shiva_honda_super_secret_jwt_key_2026';
             const token = jwt.sign(
-                { id: dealer.id, dealer_code: dealer.dealer_code, role: 'dealer', type: 'dealer' },
+                { id: dealer.id, dealer_code: dealer.dealer_code, role: dealer.role, type: 'dealer' },
                 secret,
                 { expiresIn: '30d' } // Dealers keep longer sessions for easy access
             );
@@ -309,7 +309,7 @@ class AuthController {
                 actorId: dealer.id,
                 username: dealerCode,
                 action: 'Login Success',
-                details: `Dealer logged in successfully. Device: ${deviceName || 'Unknown'}`,
+                details: `${dealer.role} logged in successfully. Device: ${deviceName || 'Unknown'}`,
                 ipAddress
             });
 
@@ -324,7 +324,8 @@ class AuthController {
                     network_name: dealer.network_name,
                     district: dealer.district,
                     state: dealer.state,
-                    dealer_type: dealer.dealer_type
+                    dealer_type: dealer.dealer_type,
+                    role: dealer.role
                 }
             });
 
@@ -371,14 +372,14 @@ class AuthController {
                 await dealerRepository.updateLoginInfo(dealer.id, deviceId, pushToken);
 
                 const token = jwt.sign(
-                    { id: dealer.id, dealer_code: dealer.dealer_code, role: 'dealer', type: 'dealer' },
+                    { id: dealer.id, dealer_code: dealer.dealer_code, role: dealer.role, type: 'dealer' },
                     secret,
                     { expiresIn: '30d' }
                 );
 
                 await logRepository.logActivity({
                     actorType: 'dealer', actorId: dealer.id, username: dealer.dealer_code,
-                    action: 'Mobile Login Success', details: `Dealer logged in via mobile. Device: ${deviceName || 'Unknown'}`, ipAddress
+                    action: 'Mobile Login Success', details: `${dealer.role} logged in via mobile. Device: ${deviceName || 'Unknown'}`, ipAddress
                 });
 
                 // Get network name
@@ -388,13 +389,13 @@ class AuthController {
                 return res.status(200).json({
                     success: true,
                     token,
-                    role: 'dealer',
+                    role: dealer.role,
                     user: {
                         id: dealer.id,
                         name: dealer.name,
                         username: dealer.dealer_code,
                         dealer_code: dealer.dealer_code,
-                        role: 'dealer',
+                        role: dealer.role,
                         type: 'dealer',
                         network_id: dealer.network_id,
                         network_name: network ? network.name : null,

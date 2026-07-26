@@ -12,5 +12,6 @@ router.post('/colors', requireSuperAdmin, masterController.addColor);
 router.put('/colors/:id', requireSuperAdmin, masterController.updateColor);
 router.post('/variant-colors', requireSuperAdmin, masterController.assignColorToVariant);
 router.delete('/variant-colors/:variant_id/:color_id', requireSuperAdmin, masterController.removeColorFromVariant);
+router.put('/models/:id/focus', requireSuperAdmin, masterController.toggleModelFocus);
 
 module.exports = router;

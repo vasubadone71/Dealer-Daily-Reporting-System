@@ -123,6 +123,22 @@ class MasterController {
             return res.status(500).json({ success: false, message: 'Server error' });
         }
     }
+    async toggleModelFocus(req, res) {
+        const { id } = req.params;
+        const { is_focus } = req.body;
+        
+        if (typeof is_focus === 'undefined') {
+            return res.status(400).json({ success: false, message: 'is_focus is required' });
+        }
+
+        try {
+            await db.query('UPDATE models SET is_focus = ? WHERE id = ?', [is_focus ? 1 : 0, id]);
+            return res.status(200).json({ success: true, message: 'Model focus updated successfully' });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ success: false, message: 'Server error' });
+        }
+    }
 }
 
 module.exports = new MasterController();

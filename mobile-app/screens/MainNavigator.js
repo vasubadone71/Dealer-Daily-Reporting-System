@@ -8,11 +8,15 @@ import ReportEntryScreen   from './ReportEntryScreen';
 import LedgerScreen        from './LedgerScreen';
 import InboxScreen         from './InboxScreen';
 import ProfileScreen       from './ProfileScreen';
+import RetailTargetsScreen from './RetailTargetsScreen';
 
 // ── Network Manager Screens ───────────────────────────────────
 import NMDashboardScreen   from './NMDashboardScreen';
 import NMDealersScreen     from './NMDealersScreen';
 import NMReportsScreen     from './NMReportsScreen';
+
+// ── Godown Screens ────────────────────────────────────────────
+import GodownDispatchScreen from './GodownDispatchScreen';
 
 // ── Tab bar definitions ───────────────────────────────────────
 const DEALER_TABS = [
@@ -20,6 +24,20 @@ const DEALER_TABS = [
   { key: 'TodayReport',  label: 'Report Entry', icon: '📝' },
   { key: 'Ledger',       label: 'Stock',       icon: '📦' },
   { key: 'Inbox',        label: 'Inbox',       icon: '📥' },
+  { key: 'Profile',      label: 'Profile',     icon: '👤' },
+];
+
+const SHOWROOM_TABS = [
+  { key: 'Dashboard',    label: 'Dashboard',   icon: '📊' },
+  { key: 'TodayReport',  label: 'Report Entry', icon: '📝' },
+  { key: 'Ledger',       label: 'Stock',       icon: '📦' },
+  { key: 'Profile',      label: 'Profile',     icon: '👤' },
+];
+
+const GODOWN_TABS = [
+  { key: 'Dashboard',    label: 'Dashboard',   icon: '📊' },
+  { key: 'Dispatch',     label: 'Dispatch',    icon: '🚚' },
+  { key: 'Ledger',       label: 'Stock',       icon: '📦' },
   { key: 'Profile',      label: 'Profile',     icon: '👤' },
 ];
 
@@ -36,23 +54,16 @@ export default function MainNavigator({ dealer, user: userProp, onLogout }) {
   const user = userProp || dealer;
   const role = user?.role || 'dealer';
 
-  const TABS = role === 'network_manager' ? NM_TABS : DEALER_TABS;
+  const TABS = 
+    role === 'network_manager' ? NM_TABS : 
+    role === 'godown' ? GODOWN_TABS : 
+    role === 'showroom' ? SHOWROOM_TABS : 
+    DEALER_TABS;
+
   const defaultTab = role === 'network_manager' ? 'NMDashboard' : 'Dashboard';
   const [activeTab, setActiveTab] = useState(defaultTab);
 
   const renderScreen = () => {
-    // ── Dealer screens ─────────────────────────────────────────
-    if (role === 'dealer') {
-      switch (activeTab) {
-        case 'Dashboard':   return <DashboardScreen dealer={user} />;
-        case 'TodayReport': return <ReportEntryScreen dealer={user} />;
-        case 'Ledger':      return <LedgerScreen />;
-        case 'Inbox':       return <InboxScreen dealer={user} />;
-        case 'Profile':     return <ProfileScreen dealer={user} onLogout={onLogout} />;
-        default:            return <DashboardScreen dealer={user} />;
-      }
-    }
-
     // ── Network Manager screens ────────────────────────────────
     if (role === 'network_manager') {
       switch (activeTab) {
@@ -65,7 +76,29 @@ export default function MainNavigator({ dealer, user: userProp, onLogout }) {
       }
     }
 
-    return <DashboardScreen dealer={user} />;
+    // ── Dealer / Showroom / Godown screens ────────────────────────
+    switch (activeTab) {
+      case 'Dashboard':   
+        return <DashboardScreen 
+                 dealer={user} 
+                 navigation={{ navigate: (screen) => setActiveTab(screen) }} 
+               />;
+      case 'TodayReport': return <ReportEntryScreen dealer={user} />;
+      case 'Ledger':      return <LedgerScreen />;
+      case 'Inbox':       return <InboxScreen dealer={user} />;
+      case 'Dispatch':    return <GodownDispatchScreen user={user} />;
+      case 'Profile':     return <ProfileScreen dealer={user} onLogout={onLogout} />;
+      case 'RetailTargets': 
+        return <RetailTargetsScreen 
+                 route={{ params: { dealer: user } }} 
+                 navigation={{ goBack: () => setActiveTab('Dashboard') }} 
+               />;
+      default:            
+        return <DashboardScreen 
+                 dealer={user} 
+                 navigation={{ navigate: (screen) => setActiveTab(screen) }} 
+               />;
+    }
   };
 
   return (

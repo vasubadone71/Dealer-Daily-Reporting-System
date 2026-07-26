@@ -84,6 +84,43 @@ class PerformanceService {
             else if (overallScore >= 70) { stars = 3; rating = 'Good'; }
             else if (overallScore >= 50) { stars = 2; rating = 'Needs Improvement'; }
 
+            // 5. Model-wise Target Breakdown
+            const modelTargets = await db.query(
+                `SELECT t.model_id, t.target_qty, m.name, m.is_focus 
+                 FROM targets t
+                 JOIN models m ON t.model_id = m.id
+                 WHERE t.target_type = 'dealer' AND t.target_id = ? AND t.month = ?`,
+                [dealerId, month]
+            );
+
+            // Fetch model-wise retail for the month
+            const modelRetails = await db.query(
+                `SELECT v.model_id, SUM(dsb.retail_sales) as total_retail
+                 FROM daily_stock_balances dsb
+                 JOIN variant_colors vc ON dsb.variant_color_id = vc.id
+                 JOIN variants v ON vc.variant_id = v.id
+                 WHERE dsb.dealer_id = ? AND dsb.date LIKE ?
+                 GROUP BY v.model_id`,
+                [dealerId, `${month}-%`]
+            );
+
+            // Map retail to targets
+            const retailMap = {};
+            modelRetails.forEach(r => { retailMap[r.model_id] = r.total_retail; });
+
+            const modelWisePerformance = modelTargets.map(t => {
+                const retail = retailMap[t.model_id] || 0;
+                return {
+                    modelId: t.model_id,
+                    modelName: t.name,
+                    isFocus: t.is_focus === 1,
+                    targetQty: t.target_qty,
+                    totalRetail: retail,
+                    remaining: Math.max(0, t.target_qty - retail),
+                    achievementPercent: t.target_qty > 0 ? Math.round((retail / t.target_qty) * 100) : 100
+                };
+            });
+
             return {
                 month,
                 submissionPercent: Math.round(submissionPercent),
@@ -94,7 +131,8 @@ class PerformanceService {
                 stars,
                 rating,
                 totalRetail,
-                targetQty
+                targetQty,
+                modelWisePerformance
             };
 
         } catch (error) {

@@ -43,9 +43,11 @@
 }
 
 body {
-  background-color: var(--bg-color);
+  background: linear-gradient(120deg, #f0f4ff 0%, #ffeef6 100%);
+  background-attachment: fixed;
   color: var(--text-color);
   overflow-x: hidden;
+  min-height: 100vh;
 }
 
 /* App Container Layout */
@@ -259,17 +261,42 @@ h1 {
 }
 
 /* Stat color variants */
-.stat-card.red { border-left-color: var(--primary-color); }
-.stat-card.red .stat-icon-wrapper { background-color: var(--primary-light); color: var(--primary-color); }
+.stat-card {
+  border-left: none !important;
+  color: white;
+}
 
-.stat-card.green { border-left-color: var(--status-submitted); }
-.stat-card.green .stat-icon-wrapper { background-color: rgba(39, 174, 96, 0.1); color: var(--status-submitted); }
+.stat-card .stat-label {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
 
-.stat-card.orange { border-left-color: var(--status-pending); }
-.stat-card.orange .stat-icon-wrapper { background-color: rgba(243, 156, 18, 0.1); color: var(--status-pending); }
+.stat-card .stat-value {
+  color: #ffffff !important;
+}
 
-.stat-card.gray { border-left-color: var(--status-not-sent); }
-.stat-card.gray .stat-icon-wrapper { background-color: rgba(149, 165, 166, 0.1); color: var(--status-not-sent); }
+.stat-card.red {
+  background: linear-gradient(135deg, #ff416c, #ff4b2b) !important;
+  box-shadow: 0 8px 20px rgba(255, 65, 108, 0.3);
+}
+.stat-card.red .stat-icon-wrapper { background-color: rgba(255,255,255,0.25); color: #fff; }
+
+.stat-card.green {
+  background: linear-gradient(135deg, #11998e, #38ef7d) !important;
+  box-shadow: 0 8px 20px rgba(56, 239, 125, 0.3);
+}
+.stat-card.green .stat-icon-wrapper { background-color: rgba(255,255,255,0.25); color: #fff; }
+
+.stat-card.orange {
+  background: linear-gradient(135deg, #f12711, #f5af19) !important;
+  box-shadow: 0 8px 20px rgba(245, 175, 25, 0.3);
+}
+.stat-card.orange .stat-icon-wrapper { background-color: rgba(255,255,255,0.25); color: #fff; }
+
+.stat-card.gray {
+  background: linear-gradient(135deg, #8E2DE2, #4A00E0) !important; /* Vibrant Purple */
+  box-shadow: 0 8px 20px rgba(74, 0, 224, 0.3);
+}
+.stat-card.gray .stat-icon-wrapper { background-color: rgba(255,255,255,0.25); color: #fff; }
 
 /* Table Styling */
 .table-container {
