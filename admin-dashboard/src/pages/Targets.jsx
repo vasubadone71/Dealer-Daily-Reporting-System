@@ -106,7 +106,6 @@ function DealerCard({ dealer, targetData, onEdit, user }) {
               <span style={{ color: '#ccc', fontSize: '0.85rem' }}>☆☆☆☆☆</span>
             )}
           </div>
-          </div>
           {user?.role !== 'network_manager' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#CC0000', fontSize: '0.78rem', fontWeight: 700 }}>
               <Edit3 size={13} />
