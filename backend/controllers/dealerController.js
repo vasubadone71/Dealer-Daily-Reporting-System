@@ -202,6 +202,31 @@ class DealerController {
             return res.status(500).json({ success: false, message: 'Failed to calculate performance score.' });
         }
     }
+
+    async getActivityLogs(req, res) {
+        try {
+            const db = require('../database/db');
+            
+            let query = 'SELECT * FROM activity_logs WHERE actor_id = ? AND actor_type = ?';
+            const params = [req.user.id, 'dealer'];
+            
+            if (req.query.date) {
+                query += ' AND date(created_at) = ?';
+                params.push(req.query.date);
+            } else if (req.query.month) {
+                query += " AND strftime('%Y-%m', created_at) = ?";
+                params.push(req.query.month);
+            }
+            
+            query += ' ORDER BY created_at DESC LIMIT 500';
+            
+            const logs = await db.query(query, params);
+            return res.status(200).json({ success: true, data: logs });
+        } catch (error) {
+            console.error('Get activity logs error:', error);
+            return res.status(500).json({ success: false, message: 'Failed to fetch activity logs.' });
+        }
+    }
 }
 
 module.exports = new DealerController();

@@ -84,12 +84,20 @@ class ReportController {
                 total_booking: total_booking || 0 
             }, actor);
             
+            const db = require('../database/db');
+            const targetDealer = await db.get('SELECT name FROM dealers WHERE id = ?', [targetDealerId]);
+            const dName = targetDealer ? targetDealer.name : targetDealerId;
+            const totalQty = items ? items.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0) : 0;
+            const logDetails = actor.type === 'admin' 
+                ? `Admin saved draft for ${totalQty} units on ${targetDate} for ${dName}`
+                : `Saved draft for ${totalQty} retail units on ${targetDate}`;
+
             await logRepository.logActivity({
                 actorType: actor.type,
                 actorId: actor.id,
                 username: req.user.username || req.user.dealer_code,
                 action: actor.type === 'admin' ? 'Admin Edited Report' : 'Draft Saved',
-                details: `Saved report for dealer ${targetDealerId} on date: ${targetDate}`,
+                details: logDetails,
                 ipAddress: req.ip || req.headers['x-forwarded-for']
             });
 
@@ -111,12 +119,19 @@ class ReportController {
         try {
             await reportRepository.submitFinalReport(targetDealerId, targetDate, actor);
             
+            const db = require('../database/db');
+            const targetDealer = await db.get('SELECT name FROM dealers WHERE id = ?', [targetDealerId]);
+            const dName = targetDealer ? targetDealer.name : targetDealerId;
+            const logDetails = actor.type === 'admin'
+                ? `Admin force-submitted report for ${dName} on ${targetDate}`
+                : `Successfully submitted final retail report for ${targetDate}`;
+
             await logRepository.logActivity({
                 actorType: actor.type,
                 actorId: actor.id,
                 username: req.user.username || req.user.dealer_code,
                 action: actor.type === 'admin' ? 'Admin Force Submitted' : 'Report Submitted',
-                details: `Final submitted report for dealer ${targetDealerId} on date: ${targetDate}`,
+                details: logDetails,
                 ipAddress: req.ip || req.headers['x-forwarded-for']
             });
 
@@ -187,7 +202,11 @@ class ReportController {
         const date = req.query.date || cronService.getTodayIstDate();
         try {
             const list = await reportRepository.getTodayReportsStatus(date);
-            return res.status(200).json({ success: true, data: list });
+            const parsedList = list.map(r => ({
+                ...r,
+                retail_items: r.retail_items ? JSON.parse(r.retail_items) : []
+            }));
+            return res.status(200).json({ success: true, data: parsedList });
         } catch (error) {
             console.error('Get statuses error:', error);
             return res.status(500).json({ success: false, message: 'Failed to fetch dealer statuses.' });
@@ -206,7 +225,21 @@ class ReportController {
                 `SELECT r.id, r.date, r.status, r.submitted_at,
                         d.dealer_code, d.name as dealer_name, d.dealer_type,
                         n.name as network_name, d.district,
-                        COALESCE(SUM(ri.quantity), 0) as total_retail
+                        COALESCE(SUM(ri.quantity), 0) as total_retail,
+                        (
+                           SELECT json_group_array(json_object(
+                             'model_name', m.name,
+                             'variant_name', v.name,
+                             'color_name', c.name,
+                             'quantity', ri2.quantity
+                           ))
+                           FROM retail_items ri2
+                           JOIN variant_colors vc ON ri2.variant_color_id = vc.id
+                           JOIN variants v ON vc.variant_id = v.id
+                           JOIN models m ON v.model_id = m.id
+                           JOIN colors c ON vc.color_id = c.id
+                           WHERE ri2.report_id = r.id
+                        ) as retail_items
                  FROM reports r
                  JOIN dealers d ON r.dealer_id = d.id
                  LEFT JOIN networks n ON d.network_id = n.id
@@ -216,7 +249,11 @@ class ReportController {
                  ORDER BY r.date DESC, d.dealer_code ASC`,
                 [`${month}-%`]
             );
-            return res.status(200).json({ success: true, data: rows });
+            const parsedRows = rows.map(r => ({
+                ...r,
+                retail_items: r.retail_items ? JSON.parse(r.retail_items) : []
+            }));
+            return res.status(200).json({ success: true, data: parsedRows });
         } catch (error) {
             console.error('Get NM reports error:', error);
             return res.status(500).json({ success: false, message: 'Failed to fetch reports.' });

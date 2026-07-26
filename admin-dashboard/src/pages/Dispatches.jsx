@@ -337,7 +337,7 @@ export default function Dispatches() {
 
       {/* Main Grid Area (Scrollable) */}
       <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', paddingBottom: '20px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+        <div style={{ columnCount: 'auto', columnWidth: '320px', columnGap: '20px' }}>
           {filteredModels.map(model => {
             let modelTotal = 0;
             model.colors.forEach(c => {
@@ -345,7 +345,7 @@ export default function Dispatches() {
             });
 
             return (
-              <div key={model.id} style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div key={model.id} style={{ breakInside: 'avoid', marginBottom: '20px', background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ background: '#CC0000', padding: '12px 16px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{model.name}</h3>
                   <span style={{ background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600 }}>Total: {modelTotal}</span>

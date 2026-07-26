@@ -21,7 +21,7 @@ function ModelGrid({ breakdown, onEditStock }) {
           {models.map(m => {
             const allColorsMap = new Map();
             if (m.colors) {
-                m.colors.filter(c => c.closing > 0).forEach(c => {
+                m.colors.filter(c => c.closing !== 0).forEach(c => {
                     if (allColorsMap.has(c.variant_color_id)) {
                         allColorsMap.get(c.variant_color_id).closing += c.closing;
                     } else {

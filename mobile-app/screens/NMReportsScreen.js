@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  ActivityIndicator, StatusBar, TouchableOpacity, RefreshControl
+  ActivityIndicator, StatusBar, TouchableOpacity, RefreshControl, Modal, Alert
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import apiClient from '../utils/apiClient';
+import { generateAndShare } from '../utils/exportUtils';
 
 const MONTHS = [
   { label: 'This Month', value: () => new Date().toISOString().substring(0, 7) },
@@ -43,10 +45,21 @@ export default function NMReportsScreen({ user }) {
   // Month mode state
   const [reports, setReports] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
+  const [expandedId, setExpandedId] = useState(null);
 
   // Date mode state
   const [statuses, setStatuses] = useState([]);
   const [selectedDate, setSelectedDate] = useState(today);
+
+  // Export State
+  const [exportModalVisible, setExportModalVisible] = useState(false);
+  const [exportType, setExportType] = useState('Daily');
+  const [exportDate, setExportDate] = useState(today);
+  const [exporting, setExporting] = useState(false);
+  
+  // Dealers for Export
+  const [dealers, setDealers] = useState([]);
+  const [exportDealer, setExportDealer] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -77,6 +90,25 @@ export default function NMReportsScreen({ user }) {
     }
   };
 
+  const fetchDealers = async () => {
+    try {
+      const res = await apiClient.get('/dealers');
+      if (res.data.success) {
+        const list = res.data.data.filter(d => d.role !== 'network_manager' && d.role !== 'admin');
+        setDealers(list);
+        if (list.length > 0) {
+          setExportDealer(list[0].id.toString());
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch dealers', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchDealers();
+  }, []);
+
   useEffect(() => {
     if (mode === 'month') fetchMonthReports(selectedMonth);
     else fetchDateStatuses(selectedDate);
@@ -103,10 +135,18 @@ export default function NMReportsScreen({ user }) {
       <StatusBar backgroundColor="#CC0000" barStyle="light-content" />
 
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Reports</Text>
-        <Text style={styles.headerSub}>
-          {mode === 'month' ? `${selectedMonth} · Read Only` : `${selectedDate} · Dealer Status`}
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Reports</Text>
+          <Text style={styles.headerSub}>
+            {mode === 'month' ? `${selectedMonth} · Read Only` : `${selectedDate} · Dealer Status`}
+          </Text>
+        </View>
+        <TouchableOpacity 
+          style={{ backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 }}
+          onPress={() => setExportModalVisible(true)}
+        >
+          <Text style={{ color: '#CC0000', fontWeight: 'bold', fontSize: 12 }}>📥 Export</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Mode Tabs */}
@@ -148,30 +188,128 @@ export default function NMReportsScreen({ user }) {
           })}
         </View>
       ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.dateScroll}
-          contentContainerStyle={{ padding: 10, gap: 8 }}
-        >
-          {last14.map(d => {
-            const val = formatDate(d);
-            const active = selectedDate === val;
-            const isToday = val === today;
-            return (
-              <TouchableOpacity
-                key={val}
-                style={[styles.pill, active && styles.pillActive]}
-                onPress={() => setSelectedDate(val)}
-              >
-                <Text style={[styles.pillText, active && styles.pillTextActive]}>
-                  {isToday ? 'Today' : `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })}`}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 12 }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+          >
+            {last14.map(d => {
+              const val = formatDate(d);
+              const active = selectedDate === val;
+              const isToday = val === today;
+              return (
+                <TouchableOpacity
+                  key={val}
+                  style={{
+                    paddingVertical: 8, paddingHorizontal: 18,
+                    borderRadius: 8, marginRight: 10,
+                    backgroundColor: active ? '#CC0000' : '#f8f9fa',
+                    borderWidth: 1, borderColor: active ? '#CC0000' : '#e9ecef',
+                    alignItems: 'center', justifyContent: 'center'
+                  }}
+                  onPress={() => setSelectedDate(val)}
+                >
+                  <Text style={{
+                    fontSize: 14, fontWeight: '700',
+                    color: active ? '#ffffff' : '#495057'
+                  }}>
+                    {isToday ? 'Today' : String(d.getDate()) + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()]}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
       )}
+
+      {/* Export Modal */}
+      <Modal visible={exportModalVisible} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1a1a2e' }}>Export Reports</Text>
+              <TouchableOpacity onPress={() => setExportModalVisible(false)}>
+                <Text style={{ fontSize: 20, color: '#999' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#666', marginBottom: 6 }}>Report Type</Text>
+            <View style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 16 }}>
+              <Picker selectedValue={exportType} onValueChange={(v) => setExportType(v)}>
+                <Picker.Item label="Daily Report" value="Daily" />
+                <Picker.Item label="Monthly Report" value="Monthly" />
+                <Picker.Item label="Dealer Ledger" value="Dealer" />
+                <Picker.Item label="Stock Report" value="Stock" />
+                <Picker.Item label="Retail Report" value="Retail" />
+                <Picker.Item label="Performance Report" value="Performance" />
+              </Picker>
+            </View>
+
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#666', marginBottom: 6 }}>Date / Month</Text>
+            <View style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 20, padding: 10 }}>
+              <Text style={{ fontSize: 16, color: '#333' }}>
+                {(exportType === 'Monthly' || exportType === 'Retail' || exportType === 'Performance') ? selectedMonth : selectedDate}
+              </Text>
+              <Text style={{ fontSize: 11, color: '#999', marginTop: 4 }}>Change date from main screen tabs before exporting.</Text>
+            </View>
+
+            {/* Dealer Selection (Only show for reports that need a dealer filter) */}
+            {(exportType === 'Dealer' || exportType === 'Retail' || exportType === 'Stock') && (
+              <>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#666', marginBottom: 6 }}>Select Dealer</Text>
+                <View style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 20 }}>
+                  <Picker selectedValue={exportDealer} onValueChange={(v) => setExportDealer(v)}>
+                    {dealers.map(d => (
+                      <Picker.Item key={d.id} label={d.name} value={d.id.toString()} />
+                    ))}
+                  </Picker>
+                </View>
+              </>
+            )}
+
+            {exporting ? (
+              <ActivityIndicator size="large" color="#CC0000" style={{ marginVertical: 20 }} />
+            ) : (
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity 
+                  style={{ flex: 1, backgroundColor: '#CC0000', padding: 14, borderRadius: 8, alignItems: 'center' }}
+                  onPress={async () => {
+                    setExporting(true);
+                    try {
+                      const dt = (exportType === 'Monthly' || exportType === 'Retail' || exportType === 'Performance') ? selectedMonth : selectedDate;
+                      await generateAndShare(exportType, 'PDF', dt, exportDealer);
+                    } catch (e) {
+                      Alert.alert("Export Error", "Failed to export report.");
+                    } finally {
+                      setExporting(false);
+                    }
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>Export PDF</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={{ flex: 1, backgroundColor: '#27ae60', padding: 14, borderRadius: 8, alignItems: 'center' }}
+                  onPress={async () => {
+                    setExporting(true);
+                    try {
+                      const dt = (exportType === 'Monthly' || exportType === 'Retail' || exportType === 'Performance') ? selectedMonth : selectedDate;
+                      await generateAndShare(exportType, 'Excel', dt, exportDealer);
+                    } catch (e) {
+                      Alert.alert("Export Error", "Failed to export report.");
+                    } finally {
+                      setExporting(false);
+                    }
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>Export Excel</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {loading ? (
         <ActivityIndicator color="#CC0000" size="large" style={{ marginTop: 60 }} />
@@ -200,25 +338,41 @@ export default function NMReportsScreen({ user }) {
 
               {reports.length === 0 ? (
                 <Text style={styles.emptyText}>No reports found for {selectedMonth}.</Text>
-              ) : reports.map((r, index) => (
-                <View key={r.id || index} style={styles.reportCard}>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={styles.dealerCode}>{r.dealer_code}</Text>
-                      <Text style={styles.reportDate}>{r.date}</Text>
+              ) : reports.map((r, index) => {
+                const isExpanded = expandedId === r.id;
+                return (
+                  <TouchableOpacity key={r.id || index} style={styles.reportCard} onPress={() => setExpandedId(isExpanded ? null : r.id)} activeOpacity={0.7}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Text style={styles.dealerCode}>{r.dealer_code}</Text>
+                          <Text style={styles.reportDate}>{r.date}</Text>
+                        </View>
+                        <Text style={styles.dealerName}>{r.dealer_name}</Text>
+                        {r.total_retail > 0 && (
+                          <Text style={styles.retailText}>Retail: {r.total_retail} units {isExpanded ? '▲' : '▼'}</Text>
+                        )}
+                      </View>
+                      <View style={[styles.statusChip, { backgroundColor: STATUS_BG[r.status] || '#f5f5f5' }]}>
+                        <Text style={[styles.statusText, { color: STATUS_COLOR[r.status] || '#999' }]}>
+                          {r.status}
+                        </Text>
+                      </View>
                     </View>
-                    <Text style={styles.dealerName}>{r.dealer_name}</Text>
-                    {r.total_retail > 0 && (
-                      <Text style={styles.retailText}>Retail: {r.total_retail} units</Text>
+                    {isExpanded && r.retail_items && r.retail_items.length > 0 && (
+                      <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f0f0f0' }}>
+                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#555', marginBottom: 6, textTransform: 'uppercase' }}>Retailed Vehicles</Text>
+                        {r.retail_items.map((item, idx) => (
+                          <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                            <Text style={{ fontSize: 13, color: '#333', flex: 1 }} numberOfLines={1}>• {item.model_name}</Text>
+                            <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1a1a2e' }}>{item.quantity}</Text>
+                          </View>
+                        ))}
+                      </View>
                     )}
-                  </View>
-                  <View style={[styles.statusChip, { backgroundColor: STATUS_BG[r.status] || '#f5f5f5' }]}>
-                    <Text style={[styles.statusText, { color: STATUS_COLOR[r.status] || '#999' }]}>
-                      {r.status}
-                    </Text>
-                  </View>
-                </View>
-              ))}
+                  </TouchableOpacity>
+                );
+              })}
             </>
           )}
 
@@ -265,25 +419,44 @@ export default function NMReportsScreen({ user }) {
 
               {statuses.length === 0 ? (
                 <Text style={styles.emptyText}>No dealer data for {selectedDate}.</Text>
-              ) : statuses.map((d, index) => (
-                <View key={d.dealer_id || index} style={styles.reportCard}>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={styles.dealerCode}>{d.dealer_code}</Text>
-                      {d.submitted_at && (
-                        <Text style={styles.reportDate}>{d.submitted_at.substring(11, 16)}</Text>
-                      )}
+              ) : statuses.map((d, index) => {
+                const isExpanded = expandedId === d.report_id && d.report_id != null;
+                return (
+                  <TouchableOpacity key={d.dealer_id || index} style={styles.reportCard} onPress={() => { if (d.report_id) setExpandedId(isExpanded ? null : d.report_id); }} activeOpacity={0.7}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Text style={styles.dealerCode}>{d.dealer_code}</Text>
+                          {d.submitted_at && (
+                            <Text style={styles.reportDate}>{new Date(d.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                          )}
+                        </View>
+                        <Text style={styles.dealerName}>{d.dealer_name}</Text>
+                        <Text style={styles.dealerMeta}>{d.network_name} • {d.district}</Text>
+                        {d.total_retail > 0 && (
+                          <Text style={styles.retailText}>Retail: {d.total_retail} units {isExpanded ? '▲' : '▼'}</Text>
+                        )}
+                      </View>
+                      <View style={[styles.statusChip, { backgroundColor: STATUS_BG[d.status] || '#f5f5f5' }]}>
+                        <Text style={[styles.statusText, { color: STATUS_COLOR[d.status] || '#999' }]}>
+                          {d.status}
+                        </Text>
+                      </View>
                     </View>
-                    <Text style={styles.dealerName}>{d.dealer_name}</Text>
-                    <Text style={styles.dealerMeta}>{d.network_name} · {d.district}</Text>
-                  </View>
-                  <View style={[styles.statusChip, { backgroundColor: STATUS_BG[d.status] || '#f5f5f5' }]}>
-                    <Text style={[styles.statusText, { color: STATUS_COLOR[d.status] || '#999' }]}>
-                      {d.status || 'Not Sent'}
-                    </Text>
-                  </View>
-                </View>
-              ))}
+                    {isExpanded && d.retail_items && d.retail_items.length > 0 && (
+                      <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f0f0f0' }}>
+                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#555', marginBottom: 6, textTransform: 'uppercase' }}>Retailed Vehicles</Text>
+                        {d.retail_items.map((item, idx) => (
+                          <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                            <Text style={{ fontSize: 13, color: '#333', flex: 1 }} numberOfLines={1}>• {item.model_name}</Text>
+                            <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1a1a2e' }}>{item.quantity}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </>
           )}
 
@@ -318,7 +491,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', padding: 10, backgroundColor: '#fff',
     borderBottomWidth: 1, borderBottomColor: '#eee', gap: 10,
   },
-  dateScroll: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee', maxHeight: 56 },
+  dateScroll: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
 
   pill: {
     paddingVertical: 7, paddingHorizontal: 16, borderRadius: 20,
@@ -344,8 +517,7 @@ const styles = StyleSheet.create({
   progressSeg: { height: 6 },
 
   reportCard: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 8,
-    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
   dealerCode: { fontSize: 12, fontWeight: '800', color: '#CC0000' },

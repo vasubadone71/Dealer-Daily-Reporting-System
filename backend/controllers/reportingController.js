@@ -12,81 +12,11 @@ class ReportingController {
 
         try {
             const dealerId = parseInt(dealer_id);
-            const today = cronService.getTodayIstDate();
-
-            // Find the most recent date with data (fallback if today isn't calculated yet)
-            const latestRow = await db.get(
-                'SELECT MAX(date) as date FROM daily_stock_balances WHERE dealer_id = ?',
-                [dealerId]
-            );
-            const queryDate = latestRow?.date || today;
-
-            // Fast direct color-wise query — no recalculate needed
-            const balances = await db.query(`
-                SELECT 
-                    dsb.variant_color_id,
-                    dsb.closing_stock,
-                    dsb.opening_stock,
-                    dsb.dispatched,
-                    dsb.retail_sales,
-                    dsb.adjustment,
-                    m.name  as model_name,
-                    m.type  as model_type,
-                    c.name  as color_name,
-                    c.hex_code
-                FROM daily_stock_balances dsb
-                JOIN variant_colors vc ON dsb.variant_color_id = vc.id
-                JOIN variants v        ON vc.variant_id = v.id
-                JOIN models m          ON v.model_id = m.id
-                JOIN colors c          ON vc.color_id = c.id
-                WHERE dsb.dealer_id = ? AND dsb.date = ?
-                ORDER BY m.type, m.name, c.name
-            `, [dealerId, queryDate]);
-
-            // Build grouped breakdown by model
-            const modelMap = {};
-            let totalOpening = 0, totalDispatched = 0, totalRetail = 0, totalAdjustment = 0, totalClosing = 0;
-
-            for (const b of balances) {
-                const key = b.model_name;
-                if (!modelMap[key]) {
-                    modelMap[key] = {
-                        model_name: b.model_name,
-                        model_type: b.model_type,
-                        closing: 0,
-                        colors: []
-                    };
-                }
-                const cs = b.closing_stock || 0;
-                modelMap[key].closing += cs;
-                if (cs !== 0) {
-                    modelMap[key].colors.push({
-                        variant_color_id: b.variant_color_id,
-                        color_name: b.color_name,
-                        hex_code: b.hex_code || '#888888',
-                        closing: cs
-                    });
-                }
-                totalOpening   += b.opening_stock || 0;
-                totalDispatched += b.dispatched    || 0;
-                totalRetail    += b.retail_sales   || 0;
-                totalAdjustment += b.adjustment    || 0;
-                totalClosing   += cs;
-            }
-
-            const breakdown = Object.values(modelMap);
+            const overview = await stockService.getTodayStockOverview(dealerId);
 
             return res.status(200).json({ 
                 success: true, 
-                data: {
-                    date: queryDate,
-                    totalOpening,
-                    totalDispatched,
-                    totalRetail,
-                    totalAdjustment,
-                    totalClosing,
-                    breakdown
-                } 
+                data: overview 
             });
         } catch (error) {
             console.error('Error fetching live stock:', error);

@@ -83,18 +83,35 @@ const requireSuperAdminOrGodown = async (req, res, next) => {
     });
 };
 
+const requireCanDispatch = async (req, res, next) => {
+    // Allows super_admin, godown, and showroom
+    if (req.user) {
+        if (req.user.type === 'admin' && req.user.role === 'super_admin') {
+            return next();
+        }
+        if (req.user.type === 'dealer' && (req.user.role === 'godown' || req.user.role === 'showroom')) {
+            return next();
+        }
+    }
+    
+    return res.status(403).json({ 
+        success: false, 
+        message: 'Forbidden. Dispatch privileges required.' 
+    });
+};
+
 const requireAdminOrGodown = async (req, res, next) => {
     if (req.user) {
         if (req.user.type === 'admin') {
             return next();
         }
-        if (req.user.type === 'dealer' && req.user.role === 'godown') {
+        if (req.user.type === 'dealer' && (req.user.role === 'godown' || req.user.role === 'showroom')) {
             return next();
         }
     }
     return res.status(403).json({ 
         success: false, 
-        message: 'Forbidden. Admin or Godown privileges required.' 
+        message: 'Forbidden. Admin, Godown, or Showroom privileges required.' 
     });
 };
 
@@ -103,5 +120,6 @@ module.exports = {
     requireSuperAdmin,
     requireDealer,
     requireSuperAdminOrGodown,
-    requireAdminOrGodown
+    requireAdminOrGodown,
+    requireCanDispatch
 };

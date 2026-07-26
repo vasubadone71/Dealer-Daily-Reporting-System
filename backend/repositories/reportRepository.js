@@ -135,11 +135,28 @@ class ReportRepository {
         const sql = `
             SELECT d.id as dealer_id, d.dealer_code, d.name as dealer_name, d.dealer_type, 
                    n.name as network_name, d.district, d.state,
-                   COALESCE(r.status, 'Pending') as status, r.submitted_at, r.id as report_id
+                   COALESCE(r.status, 'Pending') as status, r.submitted_at, r.id as report_id,
+                   COALESCE(SUM(ri.quantity), 0) as total_retail,
+                   (
+                       SELECT json_group_array(json_object(
+                           'model_name', m.name,
+                           'variant_name', v.name,
+                           'color_name', c.name,
+                           'quantity', ri2.quantity
+                       ))
+                       FROM retail_items ri2
+                       JOIN variant_colors vc ON ri2.variant_color_id = vc.id
+                       JOIN variants v ON vc.variant_id = v.id
+                       JOIN models m ON v.model_id = m.id
+                       JOIN colors c ON vc.color_id = c.id
+                       WHERE ri2.report_id = r.id
+                   ) as retail_items
             FROM dealers d
             JOIN networks n ON d.network_id = n.id
             LEFT JOIN reports r ON d.id = r.dealer_id AND r.date = ?
+            LEFT JOIN retail_items ri ON ri.report_id = r.id
             WHERE d.status = 'active'
+            GROUP BY d.id
             ORDER BY d.dealer_code ASC
         `;
         return db.query(sql, [date]);
@@ -186,6 +203,66 @@ class ReportRepository {
             WHERE d.date LIKE ? AND d.status IN ('Accepted', 'Completed')
         `, [`${currentMonth}%`]);
 
+        // Action Center Metrics - Detailed Arrays
+        const pendingDispatchesList = await db.query(`
+            SELECT d.id, d.date, dl.name as dealer_name, dl.dealer_code
+            FROM dispatches d
+            JOIN dealers dl ON d.dealer_id = dl.id
+            WHERE d.status = 'Pending'
+            ORDER BY d.created_at DESC
+        `);
+
+        // Target behind (dealers with <60% MTD achievement)
+        const targetBehindList = await db.query(`
+            SELECT dl.id, dl.dealer_code, dl.name as dealer_name, 
+                   t.target_qty, COALESCE(mtd.mtd_retail, 0) as achieved_qty
+            FROM targets t
+            JOIN dealers dl ON t.target_id = dl.id
+            LEFT JOIN (
+                SELECT r.dealer_id, SUM(ri.quantity) as mtd_retail
+                FROM reports r
+                JOIN retail_items ri ON ri.report_id = r.id
+                WHERE r.date LIKE ? AND r.status IN ('Submitted', 'Locked')
+                GROUP BY r.dealer_id
+            ) mtd ON t.target_id = mtd.dealer_id
+            WHERE t.month = ? AND t.target_type = 'dealer'
+            AND COALESCE(mtd.mtd_retail, 0) < (0.6 * t.target_qty)
+            ORDER BY dl.name ASC
+        `, [`${currentMonth}%`, currentMonth.substring(0, 7)]);
+
+        // Dead stock (Current Stock > Total sales in last 60 days)
+        const sixtyDaysAgo = new Date();
+        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+        const sixtyDaysAgoStr = sixtyDaysAgo.toISOString().split('T')[0];
+        
+        const deadStockList = await db.query(`
+            SELECT id, dealer_code, dealer_name, current_stock, sales_last_60_days FROM (
+                SELECT dl.id, dl.dealer_code, dl.name as dealer_name,
+                       SUM(CASE WHEN dsb.date = ? THEN dsb.closing_stock ELSE 0 END) as current_stock,
+                       SUM(CASE WHEN dsb.date >= ? THEN dsb.retail_sales ELSE 0 END) as sales_last_60_days
+                FROM daily_stock_balances dsb
+                JOIN dealers dl ON dsb.dealer_id = dl.id
+                WHERE dsb.date >= ? OR dsb.date = ?
+                GROUP BY dsb.dealer_id
+            ) WHERE current_stock > sales_last_60_days AND current_stock > 0
+            ORDER BY current_stock DESC
+        `, [date, sixtyDaysAgoStr, sixtyDaysAgoStr, date]);
+
+        // We already have `statusRows` which contains dealer statuses for today
+        const missingReportsList = statusRows.filter(r => r.status === 'Pending' || r.status === 'Not Sent' || !r.status).map(r => ({
+            id: r.dealer_id,
+            dealer_code: r.dealer_code,
+            dealer_name: r.dealer_name,
+            status: r.status || 'Not Sent'
+        }));
+        
+        const completedTodayList = statusRows.filter(r => r.status === 'Submitted' || r.status === 'Locked').map(r => ({
+            id: r.dealer_id,
+            dealer_code: r.dealer_code,
+            dealer_name: r.dealer_name,
+            status: r.status
+        }));
+
         return {
             today_total_sales: todaySales.total_sales || 0,
             mtd_total_sales: mtdSales.total_sales || 0,
@@ -195,7 +272,21 @@ class ReportRepository {
             pendingCount,
             lockedCount,
             notSentCount,
-            totalDealers: statusRows.length
+            totalDealers: statusRows.length,
+            action_center: {
+                missing_reports: missingReportsList.length,
+                pending_dispatches: pendingDispatchesList.length,
+                target_behind: targetBehindList.length,
+                dead_stock: deadStockList.length,
+                completed_today: completedTodayList.length
+            },
+            action_center_details: {
+                missing_reports: missingReportsList,
+                pending_dispatches: pendingDispatchesList,
+                target_behind: targetBehindList,
+                dead_stock: deadStockList,
+                completed_today: completedTodayList
+            }
         };
     }
 

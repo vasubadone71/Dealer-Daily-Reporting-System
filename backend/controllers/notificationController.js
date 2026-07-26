@@ -119,6 +119,85 @@ class NotificationController {
             return res.status(500).json({ success: false, message: 'Failed to fetch notifications.' });
         }
     }
+
+    async deleteNotification(req, res) {
+        const { id } = req.params;
+        try {
+            await db.query('DELETE FROM notifications WHERE id = ?', [id]);
+            
+            await logRepository.logActivity({
+                actorType: 'admin',
+                actorId: req.user.id,
+                username: req.user.username,
+                action: 'Notification Deleted',
+                details: `Deleted notification ID: ${id}`,
+                ipAddress: req.ip || req.headers['x-forwarded-for']
+            });
+
+            return res.status(200).json({ success: true, message: 'Notification deleted successfully.' });
+        } catch (error) {
+            console.error('Delete notification error:', error);
+            return res.status(500).json({ success: false, message: 'Failed to delete notification.' });
+        }
+    }
+
+    async resendNotification(req, res) {
+        const { id } = req.params;
+        try {
+            const notification = await db.get('SELECT * FROM notifications WHERE id = ?', [id]);
+            if (!notification) {
+                return res.status(404).json({ success: false, message: 'Notification not found.' });
+            }
+
+            const { title, message, type, target_id } = notification;
+            let tokens = [];
+            let targetName = 'All Dealers';
+
+            if (type === 'broadcast' || type === 'urgent') {
+                const dealers = await db.query('SELECT push_token FROM dealers WHERE status = "active" AND push_token IS NOT NULL');
+                tokens = dealers.map(d => d.push_token);
+            } else if (type === 'dealer') {
+                const dealer = await db.get('SELECT push_token, name FROM dealers WHERE id = ?', [target_id]);
+                if (dealer) {
+                    targetName = dealer.name;
+                    if (dealer.push_token) tokens.push(dealer.push_token);
+                }
+            } else if (type === 'network') {
+                const network = await db.get('SELECT name FROM networks WHERE id = ?', [target_id]);
+                if (network) targetName = `Network: ${network.name}`;
+                const dealers = await db.query('SELECT push_token FROM dealers WHERE status = "active" AND network_id = ? AND push_token IS NOT NULL', [target_id]);
+                tokens = dealers.map(d => d.push_token);
+            }
+
+            let tickets = [];
+            if (tokens.length > 0) {
+                tickets = await pushNotificationService.sendBroadcast(tokens, title, message, {
+                    type,
+                    notificationId: id
+                });
+            }
+
+            await logRepository.logActivity({
+                actorType: 'admin',
+                actorId: req.user.id,
+                username: req.user.username,
+                action: 'Notification Resent',
+                details: `Resent ${type} alert to: ${targetName}. Title: "${title}"`,
+                ipAddress: req.ip || req.headers['x-forwarded-for']
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Notification reminder sent successfully.',
+                recipients_count: tokens.length,
+                tickets
+            });
+
+        } catch (error) {
+            console.error('Resend notification error:', error);
+            return res.status(500).json({ success: false, message: 'Failed to resend notification.' });
+        }
+    }
 }
 
 module.exports = new NotificationController();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
-import { Send, Bell, History } from 'lucide-react';
+import { Send, Bell, History, Repeat, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function Notifications() {
@@ -91,6 +91,37 @@ export default function Notifications() {
       setSending(false);
     }
   };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this notification? It will also be removed from all dealers mobile apps.')) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.delete(`${API_BASE_URL}/notifications/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.data.success) {
+        toast.success('Notification deleted successfully.');
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete notification.');
+    }
+  };
+
+  const handleResend = async (id) => {
+    if (!window.confirm('Resend this notification to dealers mobile devices now?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${API_BASE_URL}/notifications/${id}/resend`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.data.success) {
+        toast.success(`Reminder sent to ${res.data.recipients_count} active devices.`);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to resend reminder.');
+    }
+  };
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   return (
     <div>
@@ -217,8 +248,28 @@ export default function Notifications() {
                     </div>
                     <h4 style={{ fontSize: '0.95rem', fontWeight: '700', marginBottom: '4px' }}>{item.title}</h4>
                     <p style={{ fontSize: '0.85rem', color: '#555', lineHeight: '18px', marginBottom: '8px' }}>{item.message}</p>
-                    <div style={{ fontSize: '0.75rem', color: '#888', borderTop: '1px solid #f5f5f5', paddingTop: '6px' }}>
-                      Sent By: <b>{item.sent_by_user}</b>
+                    <div style={{ fontSize: '0.75rem', color: '#888', borderTop: '1px solid #f5f5f5', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Sent By: <b>{item.sent_by_user}</b></span>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          onClick={() => handleResend(item.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', padding: '4px' }}
+                          title="Resend Reminder"
+                        >
+                          <Repeat size={14} /> Reminder
+                        </button>
+                        {user.role !== 'network_manager' && (
+                          <button 
+                            onClick={() => handleDelete(item.id)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999', display: 'flex', alignItems: 'center', padding: '4px' }}
+                            title="Delete Notification"
+                            onMouseOver={(e) => e.currentTarget.style.color = '#CC0000'}
+                            onMouseOut={(e) => e.currentTarget.style.color = '#999'}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))

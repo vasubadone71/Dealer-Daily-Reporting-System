@@ -92,7 +92,7 @@ export default function Reports() {
       }
       if (networksRes.data.success) {
         setNetworks(networksRes.data.data);
-        if (networksRes.data.data.length > 0) setSelectedNetwork(networksRes.data.data[0].id.toString());
+        setSelectedNetwork('');
       }
       if (treeRes.data.success) setInventoryTree(treeRes.data.data);
     } catch (e) {
@@ -393,16 +393,7 @@ export default function Reports() {
           </div>
         )}
 
-        {activeTab === 'networkReports' && (
-          <div style={{ flex: 1, minWidth: '200px' }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#555', marginBottom: '6px', display: 'block' }}>Select Network</label>
-            <select className="input-field" style={{ width: '100%', height: '42px' }} value={selectedNetwork} onChange={e => setSelectedNetwork(e.target.value)}>
-              {networks.map(n => (
-                <option key={n.id} value={n.id}>{n.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
+
 
         {activeTab === 'stockLedger' ? (
           <>
@@ -448,15 +439,7 @@ export default function Reports() {
         <h2>My Shiva Honda DMS - Reports Output</h2>
         <p>Dealer ID: {selectedDealer} | Date Range: {startDate} to {endDate} | Month: {selectedMonth}</p>
       </div>
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          .print-only-title { display: block !important; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-          body { background: white; color: black; font-size: 10pt; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #ccc; padding: 6px; font-size: 9pt; }
-        }
-      `}</style>
+      <style>{``}</style>
 
       {/* Main Report Container */}
       <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', padding: '24px', minHeight: '300px' }}>
@@ -842,7 +825,7 @@ export default function Reports() {
                             <span>{model.model_name}</span>
                             <span style={{ color: '#cc0000' }}>{model.closing}</span>
                           </div>
-                          {model.colors?.filter(c => c.closing > 0).map(col => (
+                          {model.colors?.filter(c => c.closing !== 0).map(col => (
                             <div key={col.color_name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#555', marginBottom: '4px' }}>
                               <span>{col.color_name}</span>
                               <span style={{ fontWeight: 600 }}>{col.closing}</span>

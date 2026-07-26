@@ -7,6 +7,7 @@ const { requireAdmin, requireSuperAdmin, requireAdminOrGodown } = require('../mi
 router.use(verifyToken);
 
 router.get('/', requireAdminOrGodown, dealerController.getDealers);
+router.get('/activity-logs', dealerController.getActivityLogs);
 router.get('/:id', requireAdmin, dealerController.getDealerById);
 router.post('/', requireSuperAdmin, dealerController.createDealer);
 router.put('/:id', requireSuperAdmin, dealerController.updateDealer);

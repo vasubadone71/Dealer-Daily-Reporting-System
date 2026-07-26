@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const dispatchController = require('../controllers/dispatchController');
 const { verifyToken } = require('../middleware/authMiddleware');
-const { requireSuperAdmin, requireSuperAdminOrGodown } = require('../middleware/roleMiddleware');
+const { requireSuperAdmin, requireSuperAdminOrGodown, requireCanDispatch } = require('../middleware/roleMiddleware');
 
 // Admin and Dealer routes
 router.use(verifyToken);
@@ -13,8 +13,8 @@ router.get('/', dispatchController.getDispatches);
 // Dealers can update status (Accepted/Rejected)
 router.put('/:id/status', dispatchController.updateStatus);
 
-// Super Admin and Godown can create dispatches
-router.post('/', requireSuperAdminOrGodown, dispatchController.saveDispatch);
+// Super Admin, Godown and Showroom can create dispatches
+router.post('/', requireCanDispatch, dispatchController.saveDispatch);
 
 // Super Admin Only
 router.delete('/:id', requireSuperAdmin, dispatchController.deleteDispatch);

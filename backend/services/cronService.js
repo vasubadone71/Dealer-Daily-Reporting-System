@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const db = require('../database/db');
 const reportRepository = require('../repositories/reportRepository');
+const logRepository = require('../repositories/logRepository');
 const pushNotificationService = require('./pushNotificationService');
 
 const getTodayIstDate = () => {
@@ -76,7 +77,11 @@ const autoLockPreviousDay = async () => {
     console.log(`[Midnight Cron] Auto-locking reports for ${yesterdayIst} (IST yesterday)...`);
     try {
         await reportRepository.lockPreviousDayReports(yesterdayIst);
-        console.log(`[Midnight Cron] Auto-lock completed for ${yesterdayIst}.`);
+        
+        console.log(`[Midnight Cron] Auto-cleaning old tracking logs (older than 90 days)...`);
+        await logRepository.deleteOldLogs(90);
+
+        console.log(`[Midnight Cron] Auto-lock and cleanup completed for ${yesterdayIst}.`);
     } catch (error) {
         console.error('[Midnight Cron] Auto-lock failed:', error);
     }

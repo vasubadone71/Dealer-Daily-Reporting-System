@@ -50,29 +50,31 @@ class DispatchController {
             let sourceId = null;
             let initialStatus = null; // Let repository decide by default
 
-            if (req.user.role === 'godown') {
+            if (req.user.role === 'godown' || req.user.role === 'showroom') {
                 sourceId = req.user.id;
             }
 
             const db = require('../database/db');
-            const destDealer = await db.get('SELECT role FROM dealers WHERE id = ?', [dealerId]);
+            const destDealer = await db.get('SELECT name, dealer_code, role FROM dealers WHERE id = ?', [dealerId]);
             
-            if (req.user.role === 'godown') {
-                if (destDealer && destDealer.role === 'showroom') {
-                    initialStatus = 'Completed'; // Instantly transferred Godown -> Showroom
-                } else {
-                    initialStatus = 'Pending'; // Godown -> Dealer requires acceptance
-                }
+            if (req.user.role === 'godown' || req.user.role === 'showroom') {
+                initialStatus = 'Completed'; // Instantly transferred everywhere in the network
             }
 
             const result = await dispatchRepository.saveDispatch(dealerId, date, items, userId, isOpeningStock, sourceId, initialStatus);
             
+            const totalQty = items.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0);
+            let actionName = sourceId ? 'Vehicle Transfer' : 'Factory Dispatch';
+            let detailStr = sourceId 
+                ? `Transferred ${totalQty} vehicles to ${destDealer.name} (${destDealer.dealer_code})`
+                : `Added ${totalQty} new vehicles from Factory to ${destDealer.name}`;
+
             await logRepository.logActivity({
                 actorType: req.user.type,
                 actorId: userId,
                 username: req.user.username || req.user.dealer_code,
-                action: 'Saved Dispatch',
-                details: `Saved dispatch for dealer ${dealerId} on date: ${date} with ${items.length} items`,
+                action: actionName,
+                details: detailStr,
                 ipAddress: req.ip || req.headers['x-forwarded-for']
             });
 

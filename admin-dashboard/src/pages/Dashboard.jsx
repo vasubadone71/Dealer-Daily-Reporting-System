@@ -12,6 +12,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const [actionModal, setActionModal] = useState({ isOpen: false, title: '', type: '', data: [] });
 
   // Calendar states
   const [calendarMonth, setCalendarMonth] = useState(() => {
@@ -98,6 +100,11 @@ export default function Dashboard() {
     dealer_sales: [], dealer_stock: [], network_sales: []
   };
 
+  const actionCenter = safeStats.action_center || {
+    missing_reports: 0, pending_dispatches: 0, target_behind: 0, dead_stock: 0, completed_today: 0
+  };
+  const actionCenterDetails = safeStats.action_center_details || {};
+
   const topDealer = rankings.dealer_sales.length > 0 ? rankings.dealer_sales[0] : null;
   const lowestDealer = rankings.dealer_sales.length > 1 ? rankings.dealer_sales[rankings.dealer_sales.length - 1] : null;
 
@@ -129,6 +136,130 @@ export default function Dashboard() {
       {error && (
         <div style={{ backgroundColor: '#fdf3f2', color: '#d32f2f', padding: '12px 20px', borderRadius: '12px', marginBottom: '24px', fontSize: '0.9rem' }}>
           ⚠️ {error}
+        </div>
+      )}
+
+      {/* Action Center for Admins / Network Managers */}
+      {user?.type === 'admin' && (
+        <div style={{ background: '#fff', borderRadius: '16px', padding: '20px 24px', marginBottom: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <AlertCircle size={20} color="#CC0000" />
+            <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#1a1a2e', fontWeight: 800 }}>Action Center</h2>
+            <span style={{ fontSize: '0.75rem', background: '#ffebee', color: '#c62828', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>Requires Attention</span>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+            
+            <div 
+              onClick={() => setActionModal({ isOpen: true, title: 'Missing Reports', type: 'missing_reports', data: actionCenterDetails.missing_reports || [] })}
+              style={{ background: '#fafafa', border: '1px solid #eee', padding: '12px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#e74c3c' }}></div>
+              <div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1a1a2e' }}>{actionCenter.missing_reports} Dealers</div>
+                <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600 }}>Report not submitted today</div>
+              </div>
+            </div>
+
+            <div 
+              onClick={() => setActionModal({ isOpen: true, title: 'Pending Dispatches', type: 'pending_dispatches', data: actionCenterDetails.pending_dispatches || [] })}
+              style={{ background: '#fafafa', border: '1px solid #eee', padding: '12px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#f39c12' }}></div>
+              <div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1a1a2e' }}>{actionCenter.pending_dispatches} Dispatches</div>
+                <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600 }}>Awaiting dealer acceptance</div>
+              </div>
+            </div>
+
+            <div 
+              onClick={() => setActionModal({ isOpen: true, title: 'Target Behind', type: 'target_behind', data: actionCenterDetails.target_behind || [] })}
+              style={{ background: '#fafafa', border: '1px solid #eee', padding: '12px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#f1c40f' }}></div>
+              <div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1a1a2e' }}>{actionCenter.target_behind} Dealers</div>
+                <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600 }}>Behind target (&lt; 60% MTD)</div>
+              </div>
+            </div>
+
+            <div 
+              onClick={() => setActionModal({ isOpen: true, title: 'Dead Stock', type: 'dead_stock', data: actionCenterDetails.dead_stock || [] })}
+              style={{ background: '#fafafa', border: '1px solid #eee', padding: '12px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#3498db' }}></div>
+              <div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1a1a2e' }}>{actionCenter.dead_stock} Dealers</div>
+                <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600 }}>Holding dead stock (60+ days)</div>
+              </div>
+            </div>
+
+            <div 
+              onClick={() => setActionModal({ isOpen: true, title: 'Completed Today', type: 'completed_today', data: actionCenterDetails.completed_today || [] })}
+              style={{ background: '#fafafa', border: '1px solid #eee', padding: '12px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#2ecc71' }}></div>
+              <div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1a1a2e' }}>{actionCenter.completed_today} Dealers</div>
+                <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600 }}>Completed report today</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Action Center Detail Modal */}
+      {actionModal.isOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 9999, padding: '20px'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '700px',
+            maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
+          }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#1a1a2e' }}>{actionModal.title}</h3>
+              <button onClick={() => setActionModal({ ...actionModal, isOpen: false })} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#999' }}>✕</button>
+            </div>
+            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, backgroundColor: '#fcfcfc' }}>
+              {actionModal.data.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#888', padding: '40px' }}>No records found.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {actionModal.data.map((item, idx) => (
+                    <div key={idx} style={{
+                      background: '#fff', padding: '14px 16px', borderRadius: '10px',
+                      border: '1px solid #eaeaea', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#1a1a2e', fontSize: '0.95rem' }}>{item.dealer_name}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+                          <span style={{ background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>{item.dealer_code || item.date}</span>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        {actionModal.type === 'target_behind' && (
+                          <>
+                            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#f39c12' }}>{item.achieved_qty} / {item.target_qty}</div>
+                            <div style={{ fontSize: '0.7rem', color: '#888' }}>Achieved</div>
+                          </>
+                        )}
+                        {actionModal.type === 'dead_stock' && (
+                          <>
+                            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#e74c3c' }}>{item.current_stock} in stock</div>
+                            <div style={{ fontSize: '0.7rem', color: '#888' }}>{item.sales_last_60_days} sold (60d)</div>
+                          </>
+                        )}
+                        {(actionModal.type === 'missing_reports' || actionModal.type === 'completed_today') && (
+                          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: item.status === 'Submitted' || item.status === 'Locked' ? '#27ae60' : '#e74c3c' }}>
+                            {item.status}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -262,11 +393,11 @@ export default function Dashboard() {
           <table style={{ minWidth: '920px', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#fafbfc' }}>
-                <th style={{ position: 'sticky', left: 0, backgroundColor: '#fafbfc', zIndex: 10, minWidth: '150px', borderRight: '1.5px solid var(--border-color)', padding: '10px 14px' }}>
-                  Showroom Code
+                <th style={{ position: 'sticky', left: 0, backgroundColor: '#fafbfc', zIndex: 10, minWidth: '250px', borderRight: '1.5px solid var(--border-color)', padding: '10px 14px' }}>
+                  Dealer Name
                 </th>
                 {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
-                  <th key={day} style={{ textAlign: 'center', width: '24px', fontSize: '0.75rem', fontWeight: 'bold', padding: '6px 2px', borderBottom: '1.5px solid var(--border-color)' }}>
+                  <th key={day} style={{ textAlign: 'center', minWidth: '32px', fontSize: '0.8rem', fontWeight: 'bold', padding: '8px 4px', borderBottom: '1.5px solid var(--border-color)' }}>
                     {day}
                   </th>
                 ))}
@@ -283,8 +414,8 @@ export default function Dashboard() {
                 dealersToday.map(dealer => {
                   return (
                     <tr key={dealer.dealer_id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                      <td style={{ position: 'sticky', left: 0, backgroundColor: '#ffffff', zIndex: 8, fontWeight: '700', fontSize: '0.8rem', padding: '8px 14px', borderRight: '1.5px solid var(--border-color)' }}>
-                        <div style={{ whiteSpace: 'nowrap' }} title={dealer.dealer_name}>
+                      <td style={{ position: 'sticky', left: 0, backgroundColor: '#ffffff', zIndex: 8, fontWeight: '700', fontSize: '0.85rem', padding: '10px 14px', borderRight: '1.5px solid var(--border-color)' }}>
+                        <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.3' }} title={dealer.dealer_name}>
                           {dealer.dealer_code} - {dealer.dealer_name}
                         </div>
                       </td>
@@ -325,13 +456,13 @@ export default function Dashboard() {
                         }
 
                         return (
-                          <td key={day} style={{ padding: '4px 2px', textAlign: 'center' }}>
+                          <td key={day} style={{ padding: '6px 4px', textAlign: 'center' }}>
                             <div 
                               title={title}
                               style={{
-                                width: '16px',
-                                height: '16px',
-                                borderRadius: '4px',
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '6px',
                                 backgroundColor: bgColor,
                                 border: borderStyle,
                                 margin: '0 auto'

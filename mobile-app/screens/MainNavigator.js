@@ -9,11 +9,13 @@ import LedgerScreen        from './LedgerScreen';
 import InboxScreen         from './InboxScreen';
 import ProfileScreen       from './ProfileScreen';
 import RetailTargetsScreen from './RetailTargetsScreen';
+import ActivityLogScreen   from './ActivityLogScreen';
 
 // ── Network Manager Screens ───────────────────────────────────
 import NMDashboardScreen   from './NMDashboardScreen';
 import NMDealersScreen     from './NMDealersScreen';
 import NMReportsScreen     from './NMReportsScreen';
+import NMNotificationsScreen from './NMNotificationsScreen';
 
 // ── Godown Screens ────────────────────────────────────────────
 import GodownDispatchScreen from './GodownDispatchScreen';
@@ -24,13 +26,16 @@ const DEALER_TABS = [
   { key: 'TodayReport',  label: 'Report Entry', icon: '📝' },
   { key: 'Ledger',       label: 'Stock',       icon: '📦' },
   { key: 'Inbox',        label: 'Inbox',       icon: '📥' },
+  { key: 'Logs',         label: 'Logs',        icon: '🕒' },
   { key: 'Profile',      label: 'Profile',     icon: '👤' },
 ];
 
 const SHOWROOM_TABS = [
   { key: 'Dashboard',    label: 'Dashboard',   icon: '📊' },
   { key: 'TodayReport',  label: 'Report Entry', icon: '📝' },
+  { key: 'Dispatch',     label: 'Transfer',    icon: '🚚' },
   { key: 'Ledger',       label: 'Stock',       icon: '📦' },
+  { key: 'Logs',         label: 'Logs',        icon: '🕒' },
   { key: 'Profile',      label: 'Profile',     icon: '👤' },
 ];
 
@@ -38,6 +43,7 @@ const GODOWN_TABS = [
   { key: 'Dashboard',    label: 'Dashboard',   icon: '📊' },
   { key: 'Dispatch',     label: 'Dispatch',    icon: '🚚' },
   { key: 'Ledger',       label: 'Stock',       icon: '📦' },
+  { key: 'Logs',         label: 'Logs',        icon: '🕒' },
   { key: 'Profile',      label: 'Profile',     icon: '👤' },
 ];
 
@@ -45,7 +51,8 @@ const NM_TABS = [
   { key: 'NMDashboard',  label: 'Dashboard',   icon: '📊' },
   { key: 'NMDealers',    label: 'Dealers',     icon: '👥' },
   { key: 'NMReports',    label: 'Reports',     icon: '📋' },
-  { key: 'Inbox',        label: 'Inbox',       icon: '📥' },
+  { key: 'NMAlerts',     label: 'Alerts',      icon: '🔔' },
+  { key: 'Logs',         label: 'Logs',        icon: '🕒' },
   { key: 'Profile',      label: 'Profile',     icon: '👤' },
 ];
 
@@ -70,8 +77,11 @@ export default function MainNavigator({ dealer, user: userProp, onLogout }) {
         case 'NMDashboard': return <NMDashboardScreen user={user} />;
         case 'NMDealers':   return <NMDealersScreen user={user} />;
         case 'NMReports':   return <NMReportsScreen user={user} />;
-        case 'Inbox':       return <InboxScreen dealer={user} />;
-        case 'Profile':     return <ProfileScreen dealer={user} onLogout={onLogout} isNM />;
+        case 'NMAlerts':    return <NMNotificationsScreen user={user} />;
+        case 'Profile':
+          return <ProfileScreen dealer={user} onLogout={onLogout} isNM />;
+        case 'Logs':
+          return <ActivityLogScreen user={user} />;
         default:            return <NMDashboardScreen user={user} />;
       }
     }
@@ -87,6 +97,7 @@ export default function MainNavigator({ dealer, user: userProp, onLogout }) {
       case 'Ledger':      return <LedgerScreen />;
       case 'Inbox':       return <InboxScreen dealer={user} />;
       case 'Dispatch':    return <GodownDispatchScreen user={user} />;
+      case 'Logs':        return <ActivityLogScreen user={user} />;
       case 'Profile':     return <ProfileScreen dealer={user} onLogout={onLogout} />;
       case 'RetailTargets': 
         return <RetailTargetsScreen 

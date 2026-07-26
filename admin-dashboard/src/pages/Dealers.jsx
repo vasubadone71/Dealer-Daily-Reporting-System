@@ -117,7 +117,7 @@ export default function Dealers() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (!dealerCode.trim() || !name.trim() || !district.trim() || !state.trim() || !dealerType) {
+    if (!dealerCode.trim() || !name.trim() || !district.trim() || !state.trim() || (role === 'dealer' && !dealerType)) {
       toast.error('Please fill in all required fields.');
       return;
     }
@@ -127,7 +127,7 @@ export default function Dealers() {
       name: name.trim(),
       district: district.trim(),
       state: state.trim(),
-      dealerType,
+      dealerType: role === 'dealer' ? dealerType : 'N/A',
       role,
       status,
       gstNo: gstNo.trim()
@@ -313,7 +313,9 @@ export default function Dealers() {
                           {d.role.toUpperCase()}
                         </span>
                       </td>
-                      <td style={{ fontWeight: '600' }}>{d.dealer_type}</td>
+                      <td style={{ fontWeight: '600', color: d.role === 'dealer' ? 'inherit' : '#999' }}>
+                        {d.role === 'dealer' ? d.dealer_type : '-'}
+                      </td>
                       <td>
                         <span className={`status-badge ${d.status === 'active' ? 'submitted' : 'late'}`}>
                           {d.status === 'active' ? '● Active' : '○ Deactivated'}

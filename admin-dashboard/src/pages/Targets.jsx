@@ -9,7 +9,7 @@ const starColor = (pct) => pct >= 100 ? '#27ae60' : pct >= 80 ? '#f39c12' : pct 
 const starCount = (pct) => pct >= 90 ? 5 : pct >= 80 ? 4 : pct >= 70 ? 3 : pct >= 50 ? 2 : 1;
 
 // ─── Dealer Card (Grid Item) ─────────────────────────────────────────────────
-function DealerCard({ dealer, targetData, onEdit }) {
+function DealerCard({ dealer, targetData, onEdit, user }) {
   const savedTarget = targetData?.target_qty || 0;
   const retail      = targetData?.retail || 0;
   const pct         = savedTarget > 0 ? Math.min(100, Math.round((retail / savedTarget) * 100)) : 0;
@@ -19,17 +19,17 @@ function DealerCard({ dealer, targetData, onEdit }) {
 
   return (
     <div
-      onClick={() => onEdit(dealer)}
+      onClick={() => { if (user?.role !== 'network_manager') onEdit(dealer); }}
       style={{
         background: 'white',
         borderRadius: '14px',
         padding: '0',
         boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
         border: hasTarget ? '1.5px solid #e8eaf6' : '1.5px dashed #ddd',
-        cursor: 'pointer',
         transition: 'all 0.2s',
         overflow: 'hidden',
         position: 'relative',
+        cursor: user?.role === 'network_manager' ? 'default' : 'pointer',
       }}
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; }}
       onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.07)'; }}
@@ -106,10 +106,13 @@ function DealerCard({ dealer, targetData, onEdit }) {
               <span style={{ color: '#ccc', fontSize: '0.85rem' }}>☆☆☆☆☆</span>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#CC0000', fontSize: '0.78rem', fontWeight: 700 }}>
-            <Edit3 size={13} />
-            {hasTarget ? 'Edit Target' : 'Set Target'}
           </div>
+          {user?.role !== 'network_manager' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#CC0000', fontSize: '0.78rem', fontWeight: 700 }}>
+              <Edit3 size={13} />
+              {hasTarget ? 'Edit Target' : 'Set Target'}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -398,6 +401,7 @@ export default function Targets() {
   const [dealers,      setDealers]      = useState([]);
   const [models,       setModels]       = useState([]);
   const [allTargets,   setAllTargets]   = useState({}); // dealerId -> { target_qty, retail }
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
   const [loading,      setLoading]      = useState(true);
   const [filterMonth,  setFilterMonth]  = useState(() => {
     const t = new Date();
@@ -564,7 +568,7 @@ export default function Targets() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
             {dealersWithTarget.map(d => (
-              <DealerCard key={d.id} dealer={d} targetData={allTargets[d.id]} onEdit={setEditDealer} />
+              <DealerCard key={d.id} dealer={d} targetData={allTargets[d.id]} onEdit={setEditDealer} user={user} />
             ))}
           </div>
         </div>
@@ -582,7 +586,7 @@ export default function Targets() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
             {dealersWithoutTarget.map(d => (
-              <DealerCard key={d.id} dealer={d} targetData={null} onEdit={setEditDealer} />
+              <DealerCard key={d.id} dealer={d} targetData={null} onEdit={setEditDealer} user={user} />
             ))}
           </div>
         </div>

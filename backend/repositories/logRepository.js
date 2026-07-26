@@ -36,6 +36,13 @@ class LogRepository {
         const row = await db.get('SELECT COUNT(*) as count FROM activity_logs');
         return row ? row.count : 0;
     }
+
+    async deleteOldLogs(days) {
+        return db.query(
+            `DELETE FROM activity_logs WHERE created_at < datetime('now', 'localtime', '-' || ? || ' days')`,
+            [days]
+        );
+    }
 }
 
 module.exports = new LogRepository();
