@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS dispatches (
     FOREIGN KEY (source_id) REFERENCES dealers(id) ON DELETE SET NULL,
     FOREIGN KEY (dealer_id) REFERENCES dealers(id) ON DELETE CASCADE
 );
-CREATE UNIQUE INDEX idx_dispatches_unique ON dispatches(dealer_id, date, is_opening_stock, IFNULL(source_id, 0));
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dispatches_unique ON dispatches(dealer_id, date, is_opening_stock, IFNULL(source_id, 0));
 
 -- 8. Dispatch Items
 CREATE TABLE IF NOT EXISTS dispatch_items (
