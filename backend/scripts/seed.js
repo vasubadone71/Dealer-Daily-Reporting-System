@@ -60,12 +60,12 @@ async function seed() {
         }
 
         // 3. Seed Super Admin
-        const adminExists = await getQuery("SELECT id FROM admins WHERE username = 'admin'");
+        const adminExists = await getQuery("SELECT id FROM users WHERE username = 'admin'");
         if (!adminExists) {
             const hashedPassword = await bcrypt.hash('admin123', 10);
             await runQuery(
-                "INSERT INTO admins (name, username, password, role) VALUES (?, ?, ?, ?)",
-                ['Super Admin', 'admin', hashedPassword, 'super_admin']
+                "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                ['admin', hashedPassword, 'super_admin']
             );
             console.log('Inserted default Super Admin (admin / admin123)');
         } else {
