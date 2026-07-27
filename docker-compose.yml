@@ -14,6 +14,8 @@ services:
       - JWT_SECRET=shiva_honda_super_secret_jwt_key_2026
       - JWT_REFRESH_SECRET=shiva_honda_super_secret_refresh_jwt_key_2026
       - TELEGRAM_BOT_TOKEN=8700748612:AAEUbjwE_W-hsSbtNid2vrGSTUY79IJkDqw
+    networks:
+      - myshivahonda_network
 
   dms-caddy:
     build:
@@ -26,10 +28,15 @@ services:
     volumes:
       - caddy_data:/data
       - caddy_config:/config
-    depends_on:
-      - dms-backend
+    networks:
+      - myshivahonda_network
 
 volumes:
   dealerdaily_data:
   caddy_data:
   caddy_config:
+
+networks:
+  myshivahonda_network:
+    name: myshivahonda_default
+    external: true
