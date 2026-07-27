@@ -1,4 +1,4 @@
-badonemotors.in {
+:80 {
     # Proxy all API requests to the Node.js backend container
     handle /api/* {
         reverse_proxy dms-backend:5000
