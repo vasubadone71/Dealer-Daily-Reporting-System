@@ -7,7 +7,7 @@ const getApiUrl = () => {
   if (isProd) {
     // ← This is the URL your APK will use in production.
     // This must match the domain you set in your Caddyfile on the VPS.
-    return 'https://dms.badonemotors.cloud/api';
+    return 'https://badonemotors.in/api';
   }
 
   // 1. Android Emulator check:
