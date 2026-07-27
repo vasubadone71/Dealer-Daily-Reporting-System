@@ -1,7 +1,7 @@
 :80 {
     # Proxy all API requests to the Node.js backend container
     handle /api/* {
-        reverse_proxy dms-backend:5000
+        reverse_proxy dealerdailyreporting-backend-1:5000
     }
 
     # Serve the React Admin Dashboard built files
