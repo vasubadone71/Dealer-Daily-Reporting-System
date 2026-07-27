@@ -49,12 +49,22 @@ app.use('/api/master', masterRoutes);
 app.use('/api/reporting', reportingRoutes);
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
-    res.status(200).json({ status: 'ok', server: 'running' });
+app.get('/api/health', async (req, res) => {
+    try {
+        await db.get('SELECT 1');
+        res.status(200).json({ status: 'ok', server: 'running', database: 'connected' });
+    } catch (err) {
+        res.status(500).json({ status: 'error', server: 'running', database: 'disconnected', error: err.message });
+    }
 });
 
-app.get('/health', (req, res) => {
-    res.status(200).json({ success: true, message: 'Shiva Honda API Server is healthy and running.' });
+app.get('/health', async (req, res) => {
+    try {
+        await db.get('SELECT 1');
+        res.status(200).json({ success: true, message: 'Shiva Honda API Server is healthy and running.', database: 'connected' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Server running, but database connection failed.', error: err.message });
+    }
 });
 
 // ─── App Version Check Endpoint ────────────────────────────────

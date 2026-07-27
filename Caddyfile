@@ -5,9 +5,9 @@
     }
 
     # Serve the React Admin Dashboard built files
-    root * /srv
-    file_server
-
-    # Fallback routing for React Single Page Application
-    try_files {path} /index.html
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
 }

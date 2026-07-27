@@ -9,8 +9,10 @@ RUN mkdir -p /app/data
 RUN ln -s /app/data/database.sqlite /app/database.sqlite
 
 # Install dependencies
+ENV NODE_ENV=production
+
 COPY backend/package*.json ./backend/
-RUN cd backend && npm install
+RUN cd backend && npm ci && npm cache clean --force
 
 # Copy backend source code
 COPY backend/ ./backend/

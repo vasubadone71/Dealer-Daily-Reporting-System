@@ -1,6 +1,6 @@
 const db = require('../database/db');
 const stockService = require('../services/stockService');
-const cronService = require('../services/cronService');
+const { getTodayIstDate } = require('../utils/dateUtils');
 
 class ReportRepository {
     async findByDealerAndDate(dealerId, date) {
@@ -44,7 +44,7 @@ class ReportRepository {
     }
 
     async createOrUpdateDraft(dealerId, date, { items = [], today_booking = 0, total_booking = 0 }, actor = { type: 'dealer', id: dealerId }) {
-        const todayStr = cronService.getTodayIstDate();
+        const todayStr = getTodayIstDate();
         const isSuperAdmin = actor.type === 'admin';
 
         if (!isSuperAdmin && date !== todayStr) {
