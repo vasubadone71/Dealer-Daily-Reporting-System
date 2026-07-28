@@ -32,6 +32,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3328e158-0adb-4876-a5de-071c0390ecad"
+      }
+    },
+    "owner": "vasubadone"
   }
 }
