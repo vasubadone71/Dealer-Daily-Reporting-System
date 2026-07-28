@@ -22,11 +22,31 @@ function initializeDatabase() {
                 console.error('Error running schema.sql:', err);
             } else {
                 console.log('Database initialized successfully with schema.sql');
+                runMigrations();
             }
         });
     } else {
         console.warn('schema.sql not found in database directory!');
     }
+}
+
+function runMigrations() {
+    const migrations = [
+        'ALTER TABLE settings ADD COLUMN honda_logo TEXT;',
+        'ALTER TABLE settings ADD COLUMN pdf_header TEXT;',
+        'ALTER TABLE settings ADD COLUMN pdf_footer TEXT;',
+        'ALTER TABLE models ADD COLUMN is_focus INTEGER DEFAULT 0;',
+        'ALTER TABLE targets ADD COLUMN model_id INTEGER REFERENCES models(id) ON DELETE CASCADE;',
+        'ALTER TABLE reports ADD COLUMN scanned_frames TEXT;',
+        'ALTER TABLE dealers ADD COLUMN gst_no TEXT;'
+    ];
+    
+    console.log('Running automatic schema migrations...');
+    migrations.forEach(mig => {
+        db.run(mig, (err) => {
+            // Ignore errors (usually means column already exists)
+        });
+    });
 }
 
 /**
