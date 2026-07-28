@@ -1,18 +1,19 @@
 const reportRepository = require('../repositories/reportRepository');
 const logRepository = require('../repositories/logRepository');
 const cronService = require('../services/cronService');
+const { getTodayIstDate } = require('../utils/dateUtils');
 
 class ReportController {
     // ----------------------------------------------------
     async getTodayReport(req, res) {
         const dealerId = req.user.id;
-        const date = req.query.date || cronService.getTodayIstDate();
+        const date = req.query.date || getTodayIstDate();
 
         try {
             const report = await reportRepository.findByDealerAndDate(dealerId, date);
             
             if (report) {
-                const todayStr = cronService.getTodayIstDate();
+                const todayStr = getTodayIstDate();
                 report.is_locked = (report.status === 'Locked' || report.status === 'Not Sent' || date !== todayStr);
                 report.auto_lock_time = "11:59 PM";
                 
@@ -48,7 +49,7 @@ class ReportController {
 
     async saveDraft(req, res) {
         const actor = { type: req.user.type, id: req.user.id };
-        const targetDate = req.body.date || cronService.getTodayIstDate();
+        const targetDate = req.body.date || getTodayIstDate();
         const targetDealerId = (req.user.type === 'admin' && req.body.dealer_id) ? req.body.dealer_id : req.user.id;
         
         const { items, today_booking, total_booking } = req.body;
@@ -113,7 +114,7 @@ class ReportController {
 
     async submitReport(req, res) {
         const actor = { type: req.user.type, id: req.user.id };
-        const targetDate = req.body.date || cronService.getTodayIstDate();
+        const targetDate = req.body.date || getTodayIstDate();
         const targetDealerId = (req.user.type === 'admin' && req.body.dealer_id) ? req.body.dealer_id : req.user.id;
 
         try {
@@ -187,7 +188,7 @@ class ReportController {
     // ADMIN ACTIONS
     // ----------------------------------------------------
     async getDashboard(req, res) {
-        const today = cronService.getTodayIstDate();
+        const today = getTodayIstDate();
         try {
             const stats = await reportRepository.getDashboardStats(today);
             return res.status(200).json({ success: true, data: stats });
@@ -199,7 +200,7 @@ class ReportController {
 
     async getTodayDealerStatuses(req, res) {
         // Accept an optional ?date= param so NM can filter by any date
-        const date = req.query.date || cronService.getTodayIstDate();
+        const date = req.query.date || getTodayIstDate();
         try {
             const list = await reportRepository.getTodayReportsStatus(date);
             const parsedList = list.map(r => ({
