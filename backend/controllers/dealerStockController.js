@@ -1,6 +1,6 @@
 const db = require('../database/db');
 const stockService = require('../services/stockService');
-const cronService = require('../services/cronService');
+const { getTodayIstDate } = require('../utils/dateUtils');
 
 const SC_MODELS = [
     { key: 'activa_110_std',    name: 'Activa 110 STD',    type: 'scooter' },
@@ -83,7 +83,7 @@ const dealerStockController = {
      */
     async getOverview(req, res) {
         try {
-            const today = cronService.getTodayIstDate();
+            const today = getTodayIstDate();
 
             // Get all active dealers
             const dealers = await db.query(
@@ -173,7 +173,7 @@ const dealerStockController = {
                 return res.status(403).json({ success: false, message: 'Access denied.' });
             }
 
-            const today = cronService.getTodayIstDate();
+            const today = getTodayIstDate();
 
             // Find the most recent date with data (fallback if today isn't calculated yet)
             const latestRow = await db.get(
