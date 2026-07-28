@@ -167,7 +167,7 @@ class AuthController {
             }
 
             // Validate OTP
-            if (!user.otp_code || user.otp_code !== otp) {
+            if (!user.otp_code || String(user.otp_code) !== String(otp)) {
                 // Increment failed attempts
                 await userRepository.incrementOtpAttempts(user.id);
                 const updatedUser = await userRepository.findById(user.id);
