@@ -127,7 +127,7 @@ export default function Dealers() {
       name: name.trim(),
       district: district.trim(),
       state: state.trim(),
-      dealerType: role === 'dealer' ? dealerType : 'N/A',
+      dealerType: role === 'dealer' ? dealerType : (role === 'showroom' ? 'Showroom' : 'Godown'),
       role,
       status,
       gstNo: gstNo.trim()
