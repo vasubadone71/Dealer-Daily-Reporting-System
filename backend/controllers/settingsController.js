@@ -231,7 +231,7 @@ class SettingsController {
 
         } catch (error) {
             console.error('Change password error:', error);
-            return res.status(500).json({ success: false, message: 'Failed to change password.' });
+            return res.status(500).json({ success: false, message: 'Failed to change password: ' + error.message });
         }
     }
 

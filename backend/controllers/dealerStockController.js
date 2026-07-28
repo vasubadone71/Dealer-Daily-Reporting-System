@@ -156,7 +156,7 @@ const dealerStockController = {
             });
         } catch (error) {
             console.error('[DealerStock] getOverview error:', error);
-            return res.status(500).json({ success: false, message: 'Failed to fetch dealer stock overview.' });
+            return res.status(500).json({ success: false, message: 'Failed to fetch dealer stock overview: ' + error.message });
         }
     },
 

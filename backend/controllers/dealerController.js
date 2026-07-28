@@ -70,7 +70,7 @@ class DealerController {
             return res.status(201).json({ success: true, message: 'Dealer created successfully.' });
         } catch (error) {
             console.error('Create dealer error:', error);
-            return res.status(500).json({ success: false, message: 'Failed to create dealer.' });
+            return res.status(500).json({ success: false, message: 'Failed to create dealer: ' + error.message });
         }
     }
 
