@@ -82,7 +82,7 @@ export default function DealerStock() {
       }
     } catch (e) {
       console.error(e);
-      toast.error('Failed to load dealer stock data');
+      toast.error(e.response?.data?.message || 'Failed to load dealer stock data');
     } finally {
       setLoading(false);
     }
